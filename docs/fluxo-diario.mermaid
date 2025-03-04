@@ -1,0 +1,66 @@
+sequenceDiagram
+    participant E as EventBridge
+    participant G as Lambda (Gerador de Conteúdo)
+    participant C as Claude API
+    participant N as Lambda (APIs Externas)
+    participant D as DynamoDB
+    participant S as SQS
+    participant P as Lambda (Distribuidor)
+    participant W as WhatsApp API
+    participant U as Usuário
+    
+    Note over E: Trigger diário (manhã)
+    
+    E->>G: Aciona geração de conteúdo diário
+    G->>D: Consulta perfis de usuários ativos
+    D->>G: Retorna perfis com preferências
+    G->>N: Solicita tendências recentes
+    N->>G: Retorna dados de tendências
+    G->>C: Solicita geração de conteúdo personalizado
+    C->>G: Retorna conteúdo personalizado
+    G->>D: Armazena conteúdo gerado
+    G->>S: Enfileira mensagens para envio
+    
+    Note over S: Fila processada com rate limiting
+    
+    S->>P: Processa mensagem da fila
+    P->>W: Envia mensagem para usuário
+    W->>U: Recebe conteúdo matinal personalizado
+    
+    Note over U,W: Usuário interage (opcional)
+    
+    U->>W: Envia pergunta ou feedback
+    W->>S: Enfileira mensagem recebida
+    S->>G: Processa resposta
+    G->>C: Gera resposta personalizada
+    C->>G: Retorna resposta
+    G->>S: Enfileira resposta
+    S->>P: Processa resposta
+    P->>W: Envia resposta ao usuário
+    W->>U: Recebe resposta personalizada
+    
+    Note over E: Trigger diário (tarde)
+    
+    E->>G: Aciona envio de dica/ferramenta
+    G->>D: Consulta interesses recentes do usuário
+    D->>G: Retorna dados de interação
+    G->>D: Busca conteúdo relevante
+    D->>G: Retorna conteúdo de ferramenta
+    G->>C: Personaliza recomendação
+    C->>G: Retorna recomendação personalizada
+    G->>S: Enfileira mensagem
+    S->>P: Processa mensagem
+    P->>W: Envia recomendação
+    W->>U: Recebe recomendação de ferramenta
+    
+    Note over E: Trigger diário (noite)
+    
+    E->>G: Aciona envio de resumo ou pergunta de engajamento
+    G->>D: Consulta atividade do dia
+    D->>G: Retorna dados de atividade
+    G->>C: Gera pergunta de engajamento
+    C->>G: Retorna pergunta personalizada
+    G->>S: Enfileira mensagem
+    S->>P: Processa mensagem
+    P->>W: Envia pergunta
+    W->>U: Recebe pergunta de engajamento

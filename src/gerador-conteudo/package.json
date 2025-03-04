@@ -1,0 +1,11 @@
+{
+  "name": "gerador-conteudo-function",
+  "version": "1.0.0",
+  "description": "Função para gerar conteúdo utilizando a Claude API",
+  "main": "index.js",
+  "dependencies": {
+    "aws-sdk": "^2.1413.0",
+    "axios": "^1.4.0",
+    "uuid": "^9.0.0"
+  }
+} 

@@ -1,0 +1,245 @@
+{
+  "DynamoDB": {
+    "Tables": [
+      {
+        "TableName": "usuarios",
+        "KeySchema": [
+          { "AttributeName": "userId", "KeyType": "HASH" }
+        ],
+        "GlobalSecondaryIndexes": [
+          {
+            "IndexName": "phoneIndex",
+            "KeySchema": [
+              { "AttributeName": "phoneNumber", "KeyType": "HASH" }
+            ],
+            "Projection": { "ProjectionType": "ALL" }
+          },
+          {
+            "IndexName": "interestIndex",
+            "KeySchema": [
+              { "AttributeName": "primaryInterest", "KeyType": "HASH" },
+              { "AttributeName": "engagementScore", "KeyType": "RANGE" }
+            ],
+            "Projection": { "ProjectionType": "ALL" }
+          }
+        ],
+        "ExampleItem": {
+          "userId": "u12345678",
+          "phoneNumber": "+5511999887766",
+          "email": "usuario@dominio.com",
+          "name": "João Silva",
+          "createdAt": "2023-03-15T14:30:00Z",
+          "lastActive": "2023-03-15T14:30:00Z",
+          "onboardingCompleted": true,
+          "preferences": {
+            "messageFrequency": "high", // high, medium, low
+            "contentTypes": ["news", "tools", "cases", "tips"],
+            "primaryInterest": "social_media_marketing", // Usado no GSI
+            "interests": [
+              { "category": "social_media_marketing", "score": 0.8 },
+              { "category": "content_marketing", "score": 0.6 },
+              { "category": "seo", "score": 0.3 }
+            ],
+            "preferredTime": { "start": "08:00", "end": "22:00" },
+            "preferredContentFormat": "detailed", // brief, detailed, visual
+            "optIns": {
+              "marketing": true,
+              "thirdParty": false,
+              "analytics": true
+            }
+          },
+          "profile": {
+            "role": "marketing_manager",
+            "companySize": "11-50",
+            "industry": "tecnologia",
+            "experience": "3-5_years",
+            "location": {
+              "city": "São Paulo",
+              "state": "SP",
+              "country": "Brasil"
+            },
+            "toolsUsed": ["google_analytics", "mailchimp", "canva"],
+            "budget": "1000-5000",
+            "challenges": ["lead_generation", "content_creation"]
+          },
+          "engagement": {
+            "engagementScore": 75, // Usado no GSI
+            "totalMessages": 42,
+            "responseRate": 0.85,
+            "avgResponseTime": 180,
+            "lastFeedback": 4.5,
+            "contentClicks": 18,
+            "referrals": 2,
+            "purchaseHistory": [
+              {
+                "productId": "p12345",
+                "purchaseDate": "2023-04-10T14:30:00Z",
+                "amount": 97.0,
+                "status": "completed"
+              }
+            ],
+            "affiliateClicks": [
+              {
+                "affiliateId": "aff_hotmart_123",
+                "clickDate": "2023-04-05T11:20:00Z",
+                "productId": "course_123",
+                "converted": true
+              }
+            ]
+          },
+          "segments": ["high_engagement", "tool_seeker", "potential_affiliate"],
+          "notes": "Interessado em automação de marketing e ferramentas de IA"
+        }
+      },
+      {
+        "TableName": "interacoes",
+        "KeySchema": [
+          { "AttributeName": "interactionId", "KeyType": "HASH" }
+        ],
+        "GlobalSecondaryIndexes": [
+          {
+            "IndexName": "userInteractionsIndex",
+            "KeySchema": [
+              { "AttributeName": "userId", "KeyType": "HASH" },
+              { "AttributeName": "timestamp", "KeyType": "RANGE" }
+            ],
+            "Projection": { "ProjectionType": "ALL" }
+          },
+          {
+            "IndexName": "contentTypeIndex",
+            "KeySchema": [
+              { "AttributeName": "contentType", "KeyType": "HASH" },
+              { "AttributeName": "timestamp", "KeyType": "RANGE" }
+            ],
+            "Projection": { "ProjectionType": "ALL" }
+          }
+        ],
+        "ExampleItem": {
+          "interactionId": "int12345678",
+          "userId": "u12345678",
+          "timestamp": "2023-03-15T15:30:00Z",
+          "channel": "whatsapp",
+          "direction": "incoming", // incoming, outgoing
+          "type": "message", // message, command, action, survey
+          "contentType": "question", // Usado no GSI (question, feedback, tip, tool, etc.)
+          "content": "Qual a melhor ferramenta para automatizar posts no Instagram?",
+          "sentiment": {
+            "score": 0.2, // -1 to 1 scale
+            "dominant": "neutral",
+            "emotions": {
+              "curiosity": 0.7,
+              "frustration": 0.2,
+              "excitement": 0.1
+            }
+          },
+          "entities": [
+            { "text": "ferramenta", "type": "product_category", "score": 0.8 },
+            { "text": "automatizar", "type": "feature", "score": 0.9 },
+            { "text": "Instagram", "type": "platform", "score": 0.95 }
+          ],
+          "intent": {
+            "primary": "tool_recommendation",
+            "confidence": 0.85,
+            "secondary": "problem_solving",
+            "originalQuery": true
+          },
+          "response": {
+            "responseId": "resp12345",
+            "delay": 2.5, // seconds
+            "contentId": "cont_tool_insta_123",
+            "customized": true,
+            "links": ["https://link.to/tool1", "https://link.to/comparison"],
+            "attachments": ["image_url"]
+          },
+          "metrics": {
+            "deliveryStatus": "read",
+            "readAt": "2023-03-15T15:30:30Z",
+            "responseTime": 45, // seconds until user replied
+            "userReaction": "positive", // derived from next message or explicit feedback
+            "followupAction": "clicked_link" // clicked_link, asked_followup, no_action
+          },
+          "context": {
+            "previousInteractionId": "int12345677",
+            "sessionId": "sess123456",
+            "triggerType": "user_initiated" // user_initiated, scheduled, followup
+          }
+        }
+      },
+      {
+        "TableName": "conteudos",
+        "KeySchema": [
+          { "AttributeName": "contentId", "KeyType": "HASH" }
+        ],
+        "GlobalSecondaryIndexes": [
+          {
+            "IndexName": "typeIndex",
+            "KeySchema": [
+              { "AttributeName": "contentType", "KeyType": "HASH" },
+              { "AttributeName": "createdAt", "KeyType": "RANGE" }
+            ],
+            "Projection": { "ProjectionType": "ALL" }
+          },
+          {
+            "IndexName": "categoryIndex",
+            "KeySchema": [
+              { "AttributeName": "primaryCategory", "KeyType": "HASH" },
+              { "AttributeName": "popularity", "KeyType": "RANGE" }
+            ],
+            "Projection": { "ProjectionType": "ALL" }
+          }
+        ],
+        "ExampleItem": {
+          "contentId": "cont_tool_insta_123",
+          "contentType": "tool_recommendation", // Usado no GSI
+          "title": "Melhores Ferramentas para Automação do Instagram em 2023",
+          "createdAt": "2023-03-01T10:30:00Z", // Usado no GSI
+          "updatedAt": "2023-03-10T16:45:00Z",
+          "expiresAt": "2023-06-01T10:30:00Z",
+          "primaryCategory": "social_media_tools", // Usado no GSI
+          "categories": ["social_media_tools", "automation", "instagram"],
+          "tags": ["instagram", "automação", "agendamento", "analytics"],
+          "popularity": 85, // Usado no GSI
+          "versions": {
+            "brief": "Para automatizar posts no Instagram, recomendamos Later, Hootsuite e Buffer. Later oferece melhor visualização, Hootsuite integra várias redes, e Buffer é mais simples e acessível.",
+            "detailed": "Existem três ótimas opções para automatizar...[conteúdo detalhado]",
+            "visual": "[URL para infográfico comparativo]"
+          },
+          "references": [
+            {
+              "url": "https://link.to/comparison",
+              "title": "Comparativo completo",
+              "type": "article"
+            }
+          ],
+          "affiliateLinks": [
+            {
+              "productId": "later_pro",
+              "url": "https://later.com/?ref=affiliate123",
+              "commission": 0.2,
+              "platform": "direct"
+            },
+            {
+              "productId": "hootsuite_course",
+              "url": "https://hotmart.com/product/hootsuite-mastery/affiliate123",
+              "commission": 0.3,
+              "platform": "hotmart"
+            }
+          ],
+          "metrics": {
+            "impressions": 42,
+            "clicks": 18,
+            "conversions": 3,
+            "feedbackScore": 4.2,
+            "mostFrequentQuestions": [
+              "Qual o preço do Later?",
+              "O Hootsuite funciona para reels?"
+            ]
+          },
+          "isAIGenerated": true,
+          "lastValidated": "2023-03-10T16:45:00Z",
+          "validatedBy": "system" // system, admin, expert
+        }
+      }
+    ]
+  }
+}

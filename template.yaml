@@ -1,0 +1,341 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Radar de Tendências em Marketing Digital
+  Sistema para fornecer insights, ferramentas e tendências de marketing via WhatsApp
+
+# Parâmetros globais que podem ser modificados durante o deploy
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    Description: Nome do ambiente (dev, prod)
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+  
+  ClaudeAPIKey:
+    Type: String
+    NoEcho: true
+    Description: Chave da API da Claude (Anthropic)
+  
+  WhatsAppAPIToken:
+    Type: String
+    NoEcho: true
+    Description: Token da API do WhatsApp Business
+  
+  WhatsAppPhoneNumberId:
+    Type: String
+    Description: ID do número de telefone do WhatsApp Business
+
+  WebhookVerifyToken:
+    Type: String
+    NoEcho: true
+    Description: Token de verificação do webhook do WhatsApp
+
+# Configurações globais para as funções
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 256
+    Runtime: nodejs18.x
+    Architectures: [x86_64]
+    Environment:
+      Variables:
+        USERS_TABLE: !Ref UsersTable
+        INTERACTIONS_TABLE: !Ref InteractionsTable
+        CONTENTS_TABLE: !Ref ContentsTable
+        SQS_RESPONSE_QUEUE_URL: !Ref ResponseQueue
+        SQS_CONTENT_QUEUE_URL: !Ref ContentQueue
+        WEBHOOK_VERIFY_TOKEN: !Ref WebhookVerifyToken
+        CLAUDE_API_KEY: !Ref ClaudeAPIKey
+        WHATSAPP_API_TOKEN: !Ref WhatsAppAPIToken
+        WHATSAPP_PHONE_NUMBER_ID: !Ref WhatsAppPhoneNumberId
+
+Resources:
+  # Tabelas DynamoDB
+  UsersTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub ${AWS::StackName}-Users-${Environment}
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: userId
+          AttributeType: S
+        - AttributeName: phoneNumber
+          AttributeType: S
+      KeySchema:
+        - AttributeName: userId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: PhoneNumberIndex
+          KeySchema:
+            - AttributeName: phoneNumber
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+
+  InteractionsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub ${AWS::StackName}-Interactions-${Environment}
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: interactionId
+          AttributeType: S
+        - AttributeName: userId
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: S
+      KeySchema:
+        - AttributeName: interactionId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: UserTimestampIndex
+          KeySchema:
+            - AttributeName: userId
+              KeyType: HASH
+            - AttributeName: timestamp
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+
+  ContentsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub ${AWS::StackName}-Contents-${Environment}
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: contentId
+          AttributeType: S
+        - AttributeName: userId
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: S
+      KeySchema:
+        - AttributeName: contentId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: UserContentIndex
+          KeySchema:
+            - AttributeName: userId
+              KeyType: HASH
+            - AttributeName: timestamp
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+
+  # Filas SQS
+  ResponseQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub ${AWS::StackName}-Response-Queue-${Environment}
+      VisibilityTimeout: 150
+      MessageRetentionPeriod: 345600 # 4 dias
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt ResponseDeadLetterQueue.Arn
+        maxReceiveCount: 5
+
+  ResponseDeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub ${AWS::StackName}-Response-DLQ-${Environment}
+      MessageRetentionPeriod: 1209600 # 14 dias
+
+  ContentQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub ${AWS::StackName}-Content-Queue-${Environment}
+      VisibilityTimeout: 300  # 5 minutos para geração de conteúdo
+      MessageRetentionPeriod: 345600 # 4 dias
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt ContentDeadLetterQueue.Arn
+        maxReceiveCount: 3
+
+  ContentDeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub ${AWS::StackName}-Content-DLQ-${Environment}
+      MessageRetentionPeriod: 1209600 # 14 dias
+
+  # Funções Lambda
+  # Declarando o WhatsAppSenderFunction primeiro
+  WhatsAppSenderFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-WhatsAppSender-${Environment}
+      CodeUri: src/whatsapp-sender/
+      Handler: index.handler
+      Description: Envia mensagens via WhatsApp API
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref InteractionsTable
+
+  # Demais funções depois
+  WhatsAppWebhookFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-WhatsAppWebhook-${Environment}
+      CodeUri: src/whatsapp-webhook/
+      Handler: index.handler
+      Description: Processa webhooks do WhatsApp e envia mensagens para a fila
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /webhook
+            Method: any
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UsersTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref InteractionsTable
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt ResponseQueue.QueueName
+
+  ProcessadorLeadsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-ProcessadorLeads-${Environment}
+      CodeUri: src/processador-leads/
+      Handler: index.handler
+      Description: Processa leads capturados da landing page
+      Environment:
+        Variables:
+          WHATSAPP_SENDER_FUNCTION: !GetAtt WhatsAppSenderFunction.Arn
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /leads
+            Method: post
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UsersTable
+        - LambdaInvokePolicy:
+            FunctionName: !Ref WhatsAppSenderFunction
+        - EventBridgePutEventsPolicy:
+            EventBusName: default
+
+  OrquestradorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-Orquestrador-${Environment}
+      CodeUri: src/orquestrador/
+      Handler: index.handler
+      Description: Orquestra respostas baseado nas entradas da fila SQS
+      MemorySize: 512
+      Timeout: 60
+      Environment:
+        Variables:
+          WHATSAPP_SENDER_FUNCTION: !GetAtt WhatsAppSenderFunction.Arn
+      Events:
+        SQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt ResponseQueue.Arn
+            BatchSize: 10
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UsersTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref InteractionsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ContentsTable
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt ContentQueue.QueueName
+        - LambdaInvokePolicy:
+            FunctionName: !Ref WhatsAppSenderFunction
+
+  GeradorConteudoFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-GeradorConteudo-${Environment}
+      CodeUri: src/gerador-conteudo/
+      Handler: index.handler
+      Description: Gera respostas usando a Claude API
+      MemorySize: 1024
+      Timeout: 120
+      Environment:
+        Variables:
+          WHATSAPP_SENDER_FUNCTION: !GetAtt WhatsAppSenderFunction.Arn
+      Events:
+        SQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt ContentQueue.Arn
+            BatchSize: 5
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UsersTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref InteractionsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ContentsTable
+        - LambdaInvokePolicy:
+            FunctionName: !Ref WhatsAppSenderFunction
+
+  # Bucket S3 para a landing page
+  LandingPageBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub ${AWS::StackName}-landing-page-${Environment}-${AWS::AccountId}
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: false
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: false
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: error.html
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+
+  LandingPageBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref LandingPageBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Action:
+              - s3:GetObject
+            Effect: Allow
+            Principal: "*"
+            Resource: !Sub arn:aws:s3:::${LandingPageBucket}/*
+
+Outputs:
+  # URLs e ARNs importantes
+  WebhookApiUrl:
+    Description: URL do API Gateway para receber webhooks do WhatsApp
+    Value: !Sub https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/webhook
+
+  LeadsApiUrl:
+    Description: URL do API Gateway para receber leads da landing page
+    Value: !Sub https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/leads
+
+  LandingPageURL:
+    Description: URL da landing page
+    Value: !GetAtt LandingPageBucket.WebsiteURL
+
+  UsersTableName:
+    Description: Nome da tabela de usuários
+    Value: !Ref UsersTable
+
+  InteractionsTableName:
+    Description: Nome da tabela de interações
+    Value: !Ref InteractionsTable
+
+  ContentsTableName:
+    Description: Nome da tabela de conteúdos
+    Value: !Ref ContentsTable
+
+  ResponseQueueURL:
+    Description: URL da fila de respostas
+    Value: !Ref ResponseQueue
+
+  ContentQueueURL:
+    Description: URL da fila de geração de conteúdo
+    Value: !Ref ContentQueue 

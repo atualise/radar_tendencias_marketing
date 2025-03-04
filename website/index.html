@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Radar de Tendências em Marketing Digital</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #0062cc;
+            --secondary-color: #6c757d;
+            --accent-color: #28a745;
+            --light-color: #f8f9fa;
+            --dark-color: #212529;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--dark-color);
+        }
+        
+        .hero-section {
+            background: linear-gradient(135deg, #0062cc 0%, #0097b2 100%);
+            color: white;
+            padding: 100px 0 80px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .hero-section::after {
+            content: "";
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            background: url('https://images.unsplash.com/photo-1516321318423-f06f85e504b3?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80') no-repeat center center;
+            background-size: cover;
+            opacity: 0.15;
+            z-index: 0;
+        }
+        
+        .hero-content {
+            position: relative;
+            z-index: 1;
+        }
+        
+        .hero-title {
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+        }
+        
+        .hero-subtitle {
+            font-size: 1.5rem;
+            margin-bottom: 2rem;
+            font-weight: 300;
+        }
+        
+        .section-title {
+            font-size: 2.5rem;
+            font-weight: 600;
+            margin-bottom: 3rem;
+            text-align: center;
+            position: relative;
+        }
+        
+        .section-title:after {
+            content: "";
+            display: block;
+            width: 80px;
+            height: 4px;
+            background: var(--primary-color);
+            margin: 15px auto 0;
+        }
+        
+        .feature-card {
+            padding: 30px 25px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            position: relative;
+            z-index: 1;
+            background: white;
+            height: 100%;
+            min-height: 280px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+        }
+        
+        .feature-icon {
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+            color: var(--primary-color);
+        }
+        
+        .feature-title {
+            font-size: 1.4rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+        
+        .step-card {
+            padding: 25px;
+            border-radius: 10px;
+            background: var(--light-color);
+            margin-bottom: 20px;
+        }
+        
+        .step-number {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            background: var(--primary-color);
+            color: white;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 40px;
+            font-weight: bold;
+            margin-right: 15px;
+        }
+        
+        .testimonial-card {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+        
+        .testimonial-content {
+            font-style: italic;
+            margin-bottom: 20px;
+        }
+        
+        .testimonial-author {
+            font-weight: bold;
+        }
+        
+        .testimonial-role {
+            color: var(--secondary-color);
+            font-size: 0.9rem;
+        }
+        
+        .faq-item {
+            margin-bottom: 20px;
+        }
+        
+        .faq-question {
+            font-weight: 600;
+            margin-bottom: 10px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .faq-answer {
+            color: var(--secondary-color);
+            padding: 10px 0 0 20px;
+            display: none;
+        }
+        
+        .cta-section {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            padding: 80px 0;
+            text-align: center;
+        }
+        
+        .btn-cta {
+            background: white;
+            color: var(--dark-color);
+            padding: 12px 30px;
+            font-weight: 600;
+            border-radius: 50px;
+            transition: all 0.3s ease;
+            border: none;
+        }
+        
+        .btn-cta:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        footer {
+            background: var(--dark-color);
+            color: white;
+            padding: 50px 0 20px;
+        }
+        
+        .footer-links a {
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+        
+        .footer-links a:hover {
+            color: white;
+        }
+        
+        .social-links a {
+            color: white;
+            margin-right: 15px;
+            font-size: 1.2rem;
+            transition: transform 0.3s ease;
+            display: inline-block;
+        }
+        
+        .social-links a:hover {
+            transform: translateY(-3px);
+        }
+        
+        .form-control {
+            padding: 12px 20px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+        
+        @media (max-width: 767px) {
+            .hero-title {
+                font-size: 2.5rem;
+            }
+            
+            .hero-subtitle {
+                font-size: 1.2rem;
+            }
+            
+            .section-title {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <div class="container hero-content">
+            <div class="row align-items-center">
+                <div class="col-lg-7">
+                    <h1 class="hero-title">Radar de Tendências em Marketing Digital</h1>
+                    <p class="hero-subtitle">Descubra ferramentas, estratégias e insights para impulsionar seus resultados de marketing.</p>
+                    <a href="#cadastro" class="btn btn-light btn-lg">Comece agora</a>
+                </div>
+                <div class="col-lg-5 d-none d-lg-block">
+                    <img src="https://images.unsplash.com/photo-1617464985170-8156793235aa?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=774&q=80" alt="Marketing Digital" class="img-fluid rounded-circle" style="max-width: 400px; border: 5px solid rgba(255,255,255,0.3);">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features-section py-5">
+        <div class="container py-5">
+            <h2 class="section-title">Descubra o que o Radar pode fazer por você</h2>
+            <div class="row mb-4">
+                <div class="col-md-4 mb-4">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <h3 class="feature-title">Tendências Emergentes</h3>
+                        <p>Receba relatórios personalizados sobre as últimas tendências em marketing digital diretamente no seu WhatsApp, mantendo-se sempre à frente da concorrência.</p>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-4">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-tools"></i>
+                        </div>
+                        <h3 class="feature-title">Ferramentas Inovadoras</h3>
+                        <p>Descubra as melhores ferramentas para cada desafio de marketing, com recomendações personalizadas baseadas no seu perfil e objetivos de negócio.</p>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-4">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-trophy"></i>
+                        </div>
+                        <h3 class="feature-title">Cases de Sucesso</h3>
+                        <p>Inspire-se com histórias de sucesso reais e aprenda estratégias comprovadas que geraram resultados excepcionais para empresas como a sua.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-4">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <h3 class="feature-title">Comunidade Exclusiva</h3>
+                        <p>Faça parte de uma rede de profissionais de marketing digital, compartilhando experiências e estabelecendo conexões valiosas para sua carreira e negócio.</p>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-4">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-graduation-cap"></i>
+                        </div>
+                        <h3 class="feature-title">Aprendizado Contínuo</h3>
+                        <p>Desenvolva suas habilidades com conteúdos educativos sobre as últimas técnicas e estratégias de marketing digital, sempre ao seu alcance via WhatsApp.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How it Works Section -->
+    <section class="how-it-works-section py-5 bg-light">
+        <div class="container py-5">
+            <h2 class="section-title">Como Funciona</h2>
+            <div class="row justify-content-center">
+                <div class="col-lg-8">
+                    <div class="step-card">
+                        <span class="step-number">1</span>
+                        <span class="step-title fw-bold">Faça seu cadastro</span>
+                        <p class="mt-3">Preencha o formulário com seus dados e preferências para começarmos a personalizar sua experiência.</p>
+                    </div>
+                    <div class="step-card">
+                        <span class="step-number">2</span>
+                        <span class="step-title fw-bold">Receba o acesso no WhatsApp</span>
+                        <p class="mt-3">Após o cadastro, você receberá uma mensagem de boas-vindas no WhatsApp com instruções para começar.</p>
+                    </div>
+                    <div class="step-card">
+                        <span class="step-number">3</span>
+                        <span class="step-title fw-bold">Utilize os comandos disponíveis</span>
+                        <p class="mt-3">Acesse tendências, ferramentas e cases a qualquer momento usando comandos simples como "/tendencia" ou "/ferramenta".</p>
+                    </div>
+                    <div class="step-card">
+                        <span class="step-number">4</span>
+                        <span class="step-title fw-bold">Receba insights personalizados</span>
+                        <p class="mt-3">Nossa IA analisa seu perfil e interações para entregar os conteúdos mais relevantes para seus objetivos de marketing.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Testimonials Section -->
+    <section class="testimonials-section py-5">
+        <div class="container py-5">
+            <h2 class="section-title">O que nossos usuários dizem</h2>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="testimonial-card">
+                        <div class="testimonial-content">
+                            "O Radar de Tendências revolucionou minha estratégia de marketing. Recebo insights valiosos direto no meu WhatsApp e já implementei várias ferramentas recomendadas com resultados fantásticos."
+                        </div>
+                        <div class="testimonial-author">Ana Paula Silva</div>
+                        <div class="testimonial-role">Gerente de Marketing, E-commerce</div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="testimonial-card">
+                        <div class="testimonial-content">
+                            "Como freelancer, preciso estar sempre atualizado. O Radar me proporciona acesso rápido às últimas tendências e ferramentas, economizando meu tempo de pesquisa e me mantendo competitivo."
+                        </div>
+                        <div class="testimonial-author">Carlos Mendes</div>
+                        <div class="testimonial-role">Consultor de Marketing Digital</div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="testimonial-card">
+                        <div class="testimonial-content">
+                            "Implementamos uma estratégia baseada em um case compartilhado pelo Radar e aumentamos nossa conversão em 32%. O acesso via WhatsApp torna tudo muito prático e ágil."
+                        </div>
+                        <div class="testimonial-author">Fernanda Costa</div>
+                        <div class="testimonial-role">Diretora de Marketing, Startup SaaS</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section class="faq-section py-5 bg-light">
+        <div class="container py-5">
+            <h2 class="section-title">Perguntas Frequentes</h2>
+            <div class="row justify-content-center">
+                <div class="col-lg-8">
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFAQ(this)">
+                            <span>Quanto custa para usar o Radar de Tendências?</span>
+                            <i class="fas fa-plus"></i>
+                        </div>
+                        <div class="faq-answer">
+                            O Radar de Tendências está atualmente em fase beta e é gratuito para uso. Futuramente, teremos planos pagos com recursos avançados, mas manteremos sempre uma versão gratuita com funcionalidades essenciais.
+                        </div>
+                    </div>
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFAQ(this)">
+                            <span>Com que frequência recebo as informações?</span>
+                            <i class="fas fa-plus"></i>
+                        </div>
+                        <div class="faq-answer">
+                            Você pode configurar a frequência de recebimento das informações (diária, semanal ou mensal). Além disso, você pode solicitar informações específicas a qualquer momento usando os comandos disponíveis.
+                        </div>
+                    </div>
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFAQ(this)">
+                            <span>É possível cancelar minha inscrição quando quiser?</span>
+                            <i class="fas fa-plus"></i>
+                        </div>
+                        <div class="faq-answer">
+                            Sim, você pode cancelar sua inscrição a qualquer momento enviando o comando "/cancelar" no WhatsApp. Não há período mínimo de permanência ou taxas de cancelamento.
+                        </div>
+                    </div>
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFAQ(this)">
+                            <span>Quais comandos estão disponíveis no WhatsApp?</span>
+                            <i class="fas fa-plus"></i>
+                        </div>
+                        <div class="faq-answer">
+                            Os comandos principais são: "/tendencia [tópico]" para receber tendências, "/ferramenta [tópico]" para recomendações de ferramentas, "/case [tópico]" para casos de sucesso e "/ajuda" para ver todos os comandos disponíveis.
+                        </div>
+                    </div>
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFAQ(this)">
+                            <span>Como meus dados serão utilizados?</span>
+                            <i class="fas fa-plus"></i>
+                        </div>
+                        <div class="faq-answer">
+                            Utilizamos seus dados apenas para personalizar sua experiência e melhorar nosso serviço. Não compartilhamos suas informações com terceiros para fins de marketing. Para mais detalhes, consulte nossa Política de Privacidade.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA and Registration Section -->
+    <section id="cadastro" class="cta-section">
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-lg-8 text-center">
+                    <h2 class="mb-4">Pronto para transformar seu marketing?</h2>
+                    <p class="lead mb-5">Cadastre-se agora e comece a receber insights valiosos diretamente no seu WhatsApp.</p>
+                    
+                    <div class="card">
+                        <div class="card-body">
+                            <form id="leadForm">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group mb-3">
+                                            <label for="nome">Nome Completo*</label>
+                                            <input type="text" class="form-control" id="nome" name="nome" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group mb-3">
+                                            <label for="whatsapp">WhatsApp*</label>
+                                            <input type="tel" class="form-control" id="whatsapp" name="whatsapp" placeholder="(11) 98765-4321" required>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group mb-3">
+                                            <label for="email">E-mail*</label>
+                                            <input type="email" class="form-control" id="email" name="email" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group mb-3">
+                                            <label for="cargo">Cargo/Função*</label>
+                                            <select class="form-control" id="cargo" name="cargo" required>
+                                                <option value="" disabled selected>Selecione uma opção</option>
+                                                <option value="marketing_manager">Gerente de Marketing</option>
+                                                <option value="digital_marketing">Especialista em Marketing Digital</option>
+                                                <option value="social_media">Social Media</option>
+                                                <option value="content_creator">Criador de Conteúdo</option>
+                                                <option value="seo_specialist">Especialista SEO</option>
+                                                <option value="marketing_director">Diretor de Marketing</option>
+                                                <option value="entrepreneur">Empreendedor</option>
+                                                <option value="other">Outro</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-check mb-4">
+                                    <input class="form-check-input" type="checkbox" id="privacyPolicy" required>
+                                    <label class="form-check-label" for="privacyPolicy">
+                                        Concordo com a <a href="#" class="text-primary">Política de Privacidade</a> e em receber comunicações via WhatsApp
+                                    </label>
+                                </div>
+                                <button type="submit" class="btn btn-cta btn-lg">Receber acesso</button>
+                            </form>
+                            <div id="formSuccess" class="alert alert-success mt-3" style="display: none;">
+                                Cadastro realizado com sucesso! Em breve você receberá uma mensagem no WhatsApp.
+                            </div>
+                            <div id="formError" class="alert alert-danger mt-3" style="display: none;">
+                                Ocorreu um erro ao processar seu cadastro. Por favor, tente novamente.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="row">
+                <div class="col-md-4 mb-4">
+                    <h5 class="mb-4">Radar de Tendências</h5>
+                    <p>Mantenha-se à frente no mundo do marketing digital com insights personalizados e atualizados sobre tendências, ferramentas e estratégias.</p>
+                    <div class="social-links mt-4">
+                        <a href="#"><i class="fab fa-facebook-f"></i></a>
+                        <a href="#"><i class="fab fa-twitter"></i></a>
+                        <a href="#"><i class="fab fa-instagram"></i></a>
+                        <a href="#"><i class="fab fa-linkedin-in"></i></a>
+                    </div>
+                </div>
+                <div class="col-md-2 mb-4">
+                    <h5 class="mb-4">Links</h5>
+                    <ul class="list-unstyled footer-links">
+                        <li class="mb-2"><a href="#">Início</a></li>
+                        <li class="mb-2"><a href="#cadastro">Cadastro</a></li>
+                        <li class="mb-2"><a href="#">Sobre nós</a></li>
+                        <li class="mb-2"><a href="#">Blog</a></li>
+                        <li class="mb-2"><a href="#">Contato</a></li>
+                    </ul>
+                </div>
+                <div class="col-md-2 mb-4">
+                    <h5 class="mb-4">Legal</h5>
+                    <ul class="list-unstyled footer-links">
+                        <li class="mb-2"><a href="#">Termos de Uso</a></li>
+                        <li class="mb-2"><a href="#">Privacidade</a></li>
+                        <li class="mb-2"><a href="#">Cookies</a></li>
+                    </ul>
+                </div>
+                <div class="col-md-4 mb-4">
+                    <h5 class="mb-4">Contato</h5>
+                    <ul class="list-unstyled">
+                        <li class="mb-2"><i class="fas fa-envelope me-2"></i> contato@radardetendencias.com</li>
+                        <li class="mb-2"><i class="fas fa-phone me-2"></i> (11) 98765-4321</li>
+                        <li class="mb-2"><i class="fas fa-map-marker-alt me-2"></i> São Paulo, SP - Brasil</li>
+                    </ul>
+                </div>
+            </div>
+            <hr class="mt-4 mb-4" style="background-color: rgba(255,255,255,0.1);">
+            <div class="row">
+                <div class="col-md-12 text-center">
+                    <p class="mb-0">&copy; 2023 Radar de Tendências em Marketing Digital. Todos os direitos reservados.</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Function to toggle FAQ answers
+        function toggleFAQ(element) {
+            const answer = element.nextElementSibling;
+            const icon = element.querySelector('i');
+            
+            if (answer.style.display === 'block') {
+                answer.style.display = 'none';
+                icon.className = 'fas fa-plus';
+            } else {
+                answer.style.display = 'block';
+                icon.className = 'fas fa-minus';
+            }
+        }
+        
+        // Lead form submission
+        document.getElementById('leadForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = {
+                name: document.getElementById('nome').value,
+                phone: document.getElementById('whatsapp').value,
+                email: document.getElementById('email').value,
+                role: document.getElementById('cargo').value
+            };
+            
+            // API endpoint para registrar o lead (será substituído pelo endpoint real do API Gateway)
+            const apiEndpoint = 'https://zq4jvjc3zb.execute-api.us-east-1.amazonaws.com/Prod';
+            
+            fetch(apiEndpoint + '/leads', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Erro na resposta da rede');
+                }
+                return response.json();
+            })
+            .then(data => {
+                document.getElementById('formSuccess').style.display = 'block';
+                document.getElementById('formError').style.display = 'none';
+                document.getElementById('leadForm').reset();
+                
+                // Redirecionar após registro bem-sucedido
+                // setTimeout(() => {
+                //     window.location.href = '/obrigado.html';
+                // }, 3000);
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                document.getElementById('formError').style.display = 'block';
+                document.getElementById('formSuccess').style.display = 'none';
+            });
+        });
+    </script>
+</body>
+</html> 

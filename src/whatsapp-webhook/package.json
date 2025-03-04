@@ -1,0 +1,10 @@
+{
+  "name": "whatsapp-webhook-function",
+  "version": "1.0.0",
+  "description": "Função para receber e processar webhooks do WhatsApp",
+  "main": "index.js",
+  "dependencies": {
+    "aws-sdk": "^2.1413.0",
+    "uuid": "^9.0.0"
+  }
+} 

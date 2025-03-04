@@ -1,0 +1,314 @@
+{
+  "widgets": [
+    {
+      "type": "text",
+      "x": 0,
+      "y": 0,
+      "width": 24,
+      "height": 1,
+      "properties": {
+        "markdown": "# Dashboard de Monitoramento - Radar de Tendências\nMonitoramento dos fluxos de comunicação entre o sistema e os usuários"
+      }
+    },
+    {
+      "type": "text",
+      "x": 0,
+      "y": 1,
+      "width": 24,
+      "height": 1,
+      "properties": {
+        "markdown": "## Métricas de Mensagens WhatsApp"
+      }
+    },
+    {
+      "type": "metric",
+      "x": 0,
+      "y": 2,
+      "width": 8,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          [
+            "RadarTendencias/WhatsApp",
+            "TaxaSucessoEnvio",
+            "Environment",
+            "dev",
+            "Service",
+            "WhatsAppSender"
+          ]
+        ],
+        "view": "gauge",
+        "region": "us-east-1",
+        "title": "Taxa de Sucesso de Envio",
+        "period": 300,
+        "stat": "Average",
+        "yAxis": {
+          "left": {
+            "min": 0,
+            "max": 1
+          }
+        }
+      }
+    },
+    {
+      "type": "metric",
+      "x": 8,
+      "y": 2,
+      "width": 8,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          [
+            "RadarTendencias/WhatsApp",
+            "MensagensEnviadas",
+            "Environment",
+            "dev",
+            "Service",
+            "WhatsAppSender"
+          ],
+          [
+            "RadarTendencias/WhatsApp",
+            "MensagensFalhas",
+            "Environment",
+            "dev",
+            "Service",
+            "WhatsAppSender"
+          ]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "us-east-1",
+        "title": "Mensagens Enviadas x Falhas",
+        "period": 300,
+        "stat": "Sum"
+      }
+    },
+    {
+      "type": "metric",
+      "x": 16,
+      "y": 2,
+      "width": 8,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          [
+            "RadarTendencias/WhatsApp",
+            "MensagensRetry",
+            "Environment",
+            "dev",
+            "Service",
+            "WhatsAppSender"
+          ],
+          [
+            "RadarTendencias/WhatsApp",
+            "MensagensRetryEsgotado",
+            "Environment",
+            "dev",
+            "Service",
+            "WhatsAppSender"
+          ]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "us-east-1",
+        "title": "Retries de Mensagens",
+        "period": 300,
+        "stat": "Sum"
+      }
+    },
+    {
+      "type": "text",
+      "x": 0,
+      "y": 8,
+      "width": 24,
+      "height": 1,
+      "properties": {
+        "markdown": "## Métricas do Orquestrador"
+      }
+    },
+    {
+      "type": "metric",
+      "x": 0,
+      "y": 9,
+      "width": 8,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          [
+            "RadarTendencias/Orquestrador",
+            "TaxaSucessoProcessamento",
+            "Environment",
+            "dev",
+            "Service",
+            "Orquestrador"
+          ]
+        ],
+        "view": "gauge",
+        "region": "us-east-1",
+        "title": "Taxa de Sucesso de Processamento",
+        "period": 300,
+        "stat": "Average",
+        "yAxis": {
+          "left": {
+            "min": 0,
+            "max": 1
+          }
+        }
+      }
+    },
+    {
+      "type": "metric",
+      "x": 8,
+      "y": 9,
+      "width": 8,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          [
+            "RadarTendencias/Orquestrador",
+            "ComandoTendencia",
+            "Environment",
+            "dev",
+            "Service",
+            "Orquestrador"
+          ],
+          [
+            "RadarTendencias/Orquestrador",
+            "ComandoFerramenta",
+            "Environment",
+            "dev",
+            "Service",
+            "Orquestrador"
+          ],
+          [
+            "RadarTendencias/Orquestrador",
+            "ComandoCase",
+            "Environment",
+            "dev",
+            "Service",
+            "Orquestrador"
+          ],
+          [
+            "RadarTendencias/Orquestrador",
+            "ComandoAjuda",
+            "Environment",
+            "dev",
+            "Service",
+            "Orquestrador"
+          ]
+        ],
+        "view": "timeSeries",
+        "stacked": true,
+        "region": "us-east-1",
+        "title": "Tipos de Comandos Processados",
+        "period": 300,
+        "stat": "Sum"
+      }
+    },
+    {
+      "type": "metric",
+      "x": 16,
+      "y": 9,
+      "width": 8,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          [
+            "RadarTendencias/Orquestrador",
+            "LatenciaProcessamentoMensagem",
+            "Environment",
+            "dev",
+            "Service",
+            "Orquestrador"
+          ]
+        ],
+        "view": "timeSeries",
+        "region": "us-east-1",
+        "title": "Latência de Processamento (ms)",
+        "period": 300,
+        "stat": "Average",
+        "yAxis": {
+          "left": {
+            "min": 0
+          }
+        }
+      }
+    },
+    {
+      "type": "text",
+      "x": 0,
+      "y": 15,
+      "width": 24,
+      "height": 1,
+      "properties": {
+        "markdown": "## Fluxo de Usuários e Interações"
+      }
+    },
+    {
+      "type": "metric",
+      "x": 0,
+      "y": 16,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          [
+            "RadarTendencias/Orquestrador",
+            "MensagensUsuarioProcessadas",
+            "Environment",
+            "dev",
+            "Service",
+            "Orquestrador"
+          ],
+          [
+            "RadarTendencias/WhatsApp",
+            "MensagensEnviadas",
+            "Environment",
+            "dev",
+            "Service",
+            "WhatsAppSender"
+          ]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "us-east-1",
+        "title": "Mensagens Recebidas vs Enviadas",
+        "period": 300,
+        "stat": "Sum"
+      }
+    },
+    {
+      "type": "metric",
+      "x": 12,
+      "y": 16,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          [
+            "RadarTendencias/Orquestrador",
+            "FalhasProcessamento",
+            "Environment",
+            "dev",
+            "Service",
+            "Orquestrador"
+          ],
+          [
+            "RadarTendencias/WhatsApp",
+            "MensagensFalhas",
+            "Environment",
+            "dev",
+            "Service",
+            "WhatsAppSender"
+          ]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "us-east-1",
+        "title": "Falhas por Etapa",
+        "period": 300,
+        "stat": "Sum"
+      }
+    }
+  ]
+}

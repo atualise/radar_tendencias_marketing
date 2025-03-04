@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Radar de Tendências em Marketing Digital - Powered by IA</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        .gradient-bg {
+            background: linear-gradient(90deg, #1a202c 0%, #2d3748 100%);
+        }
+        .feature-card {
+            transition: all 0.3s ease;
+        }
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body class="font-sans antialiased text-gray-900 bg-gray-100">
+    <!-- Hero Section -->
+    <header class="gradient-bg text-white">
+        <div class="container mx-auto px-6 py-16 max-w-6xl">
+            <div class="flex flex-col md:flex-row items-center">
+                <div class="md:w-1/2 md:pr-10">
+                    <h1 class="text-4xl md:text-5xl font-bold mb-6">Fique à frente das tendências em Marketing Digital</h1>
+                    <p class="text-xl mb-8">Receba insights personalizados, ferramentas emergentes e estratégias de IA diretamente no seu WhatsApp</p>
+                    <div class="flex space-x-4 mb-2">
+                        <div class="flex items-center">
+                            <i class="fas fa-check-circle text-green-400 mr-2"></i>
+                            <span>100% gratuito</span>
+                        </div>
+                        <div class="flex items-center">
+                            <i class="fas fa-robot text-blue-400 mr-2"></i>
+                            <span>Potencializado por IA</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center mb-8">
+                        <i class="fas fa-brain text-purple-400 mr-2"></i>
+                        <span>Personalizado para suas necessidades</span>
+                    </div>
+                </div>
+                <div class="md:w-1/2 mt-10 md:mt-0">
+                    <div class="bg-white rounded-lg shadow-xl p-8">
+                        <h3 class="text-2xl font-bold text-gray-800 mb-4">Inscreva-se agora</h3>
+                        <p class="text-gray-600 mb-6">Junte-se a mais de 500 profissionais que já recebem nossas atualizações diárias.</p>
+                        
+                        <form id="signup-form" class="space-y-4">
+                            <div>
+                                <label for="name" class="block text-gray-700 mb-1">Nome completo</label>
+                                <input type="text" id="name" name="name" required class="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <div>
+                                <label for="phone" class="block text-gray-700 mb-1">WhatsApp</label>
+                                <input type="tel" id="phone" name="phone" required placeholder="+55 (00) 00000-0000" class="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <div>
+                                <label for="email" class="block text-gray-700 mb-1">E-mail</label>
+                                <input type="email" id="email" name="email" required class="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <div>
+                                <label for="role" class="block text-gray-700 mb-1">Sua função</label>
+                                <select id="role" name="role" required class="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <option value="">Selecione uma opção</option>
+                                    <option value="marketeiro">Marketeiro</option>
+                                    <option value="social_media">Social Media</option>
+                                    <option value="gestor">Gestor/Coordenador</option>
+                                    <option value="empreendedor">Empreendedor</option>
+                                    <option value="freelancer">Freelancer</option>
+                                    <option value="outro">Outro</option>
+                                </select>
+                            </div>
+                            <div class="pt-2">
+                                <button type="submit" class="w-full bg-blue-600 text-white py-3 px-6 rounded-md hover:bg-blue-700 transition duration-300 font-bold">Quero receber insights</button>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-4">Ao se inscrever, você concorda com nossa <a href="#" class="text-blue-600 hover:underline">política de privacidade</a> e em receber comunicações via WhatsApp.</p>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Features Section -->
+    <section class="py-16 bg-white">
+        <div class="container mx-auto px-6 max-w-6xl">
+            <h2 class="text-3xl font-bold text-center mb-12">O que você vai receber</h2>
+            
+            <div class="grid md:grid-cols-3 gap-8">
+                <div class="feature-card bg-gray-50 rounded-lg p-8 shadow-md">
+                    <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-6">
+                        <i class="fas fa-chart-line text-2xl text-blue-600"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Tendências Emergentes</h3>
+                    <p class="text-gray-600">Receba as últimas tendências em marketing digital antes que elas se tornem mainstream. Fique à frente da concorrência com insights antecipados.</p>
+                </div>
+                
+                <div class="feature-card bg-gray-50 rounded-lg p-8 shadow-md">
+                    <div class="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mb-6">
+                        <i class="fas fa-tools text-2xl text-purple-600"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Ferramentas Inovadoras</h3>
+                    <p class="text-gray-600">Descubra ferramentas e soluções de IA para otimizar suas estratégias. Recomendações personalizadas baseadas no seu perfil profissional.</p>
+                </div>
+                
+                <div class="feature-card bg-gray-50 rounded-lg p-8 shadow-md">
+                    <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-6">
+                        <i class="fas fa-lightbulb text-2xl text-green-600"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Cases de Sucesso</h3>
+                    <p class="text-gray-600">Aprenda com exemplos reais de estratégias que funcionam. Análises detalhadas de cases relevantes para o seu nicho de atuação.</p>
+                </div>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-8 mt-12">
+                <div class="feature-card bg-gray-50 rounded-lg p-8 shadow-md">
+                    <div class="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mb-6">
+                        <i class="fas fa-comments text-2xl text-yellow-600"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Comunidade Exclusiva</h3>
+                    <p class="text-gray-600">Conecte-se com outros profissionais de marketing para trocar experiências, dicas e oportunidades. Networking direcionado para seu crescimento profissional.</p>
+                </div>
+                
+                <div class="feature-card bg-gray-50 rounded-lg p-8 shadow-md">
+                    <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-6">
+                        <i class="fas fa-graduation-cap text-2xl text-red-600"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Aprendizado Contínuo</h3>
+                    <p class="text-gray-600">Acesso a mini-cursos, webinars e conteúdos educacionais exclusivos. Mantenha suas habilidades atualizadas com as demandas do mercado.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works Section -->
+    <section class="py-16 bg-gray-50">
+        <div class="container mx-auto px-6 max-w-6xl">
+            <h2 class="text-3xl font-bold text-center mb-12">Como funciona</h2>
+            
+            <div class="grid md:grid-cols-4 gap-8">
+                <div class="text-center">
+                    <div class="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 text-white text-xl font-bold">1</div>
+                    <h3 class="text-xl font-semibold mb-2">Inscreva-se</h3>
+                    <p class="text-gray-600">Preencha o formulário com seus dados e preferências</p>
+                </div>
+                
+                <div class="text-center">
+                    <div class="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 text-white text-xl font-bold">2</div>
+                    <h3 class="text-xl font-semibold mb-2">Personalize</h3>
+                    <p class="text-gray-600">Responda algumas perguntas sobre suas necessidades</p>
+                </div>
+                
+                <div class="text-center">
+                    <div class="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 text-white text-xl font-bold">3</div>
+                    <h3 class="text-xl font-semibold mb-2">Receba insights</h3>
+                    <p class="text-gray-600">Acompanhe atualizações personalizadas no WhatsApp</p>
+                </div>
+                
+                <div class="text-center">
+                    <div class="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 text-white text-xl font-bold">4</div>
+                    <h3 class="text-xl font-semibold mb-2">Interaja</h3>
+                    <p class="text-gray-600">Faça perguntas e aprofunde nos temas de interesse</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Testimonials Section -->
+    <section class="py-16 bg-white">
+        <div class="container mx-auto px-6 max-w-6xl">
+            <h2 class="text-3xl font-bold text-center mb-12">O que dizem nossos usuários</h2>
+            
+            <div class="grid md:grid-cols-3 gap-8">
+                <div class="bg-gray-50 p-8 rounded-lg shadow-md">
+                    <div class="flex items-center mb-4">
+                        <div class="text-yellow-400 flex">
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                        </div>
+                    </div>
+                    <p class="text-gray-600 mb-6">"As recomendações de ferramentas de IA me ajudaram a automatizar vários processos da minha agência. Economizei horas de trabalho e consegui entregar resultados melhores para meus clientes."</p>
+                    <div class="flex items-center">
+                        <div class="w-12 h-12 bg-blue-600 rounded-full mr-4 flex items-center justify-center text-white font-bold">MB</div>
+                        <div>
+                            <h4 class="font-bold">Marcelo Brito</h4>
+                            <p class="text-gray-500 text-sm">Diretor de Marketing</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-gray-50 p-8 rounded-lg shadow-md">
+                    <div class="flex items-center mb-4">
+                        <div class="text-yellow-400 flex">
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                        </div>
+                    </div>
+                    <p class="text-gray-600 mb-6">"Implementamos uma estratégia baseada nas tendências compartilhadas e vimos um aumento de 43% no engajamento do nosso Instagram. As análises são profundas e realmente aplicáveis."</p>
+                    <div class="flex items-center">
+                        <div class="w-12 h-12 bg-purple-600 rounded-full mr-4 flex items-center justify-center text-white font-bold">CA</div>
+                        <div>
+                            <h4 class="font-bold">Carolina Almeida</h4>
+                            <p class="text-gray-500 text-sm">Social Media Manager</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-gray-50 p-8 rounded-lg shadow-md">
+                    <div class="flex items-center mb-4">
+                        <div class="text-yellow-400 flex">
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star-half-alt"></i>
+                        </div>
+                    </div>
+                    <p class="text-gray-600 mb-6">"Como empreendedor, não tenho tempo para acompanhar todas as novidades. O Radar de Tendências filtra o que é realmente importante e me mantém atualizado sem esforço."</p>
+                    <div class="flex items-center">
+                        <div class="w-12 h-12 bg-green-600 rounded-full mr-4 flex items-center justify-center text-white font-bold">RS</div>
+                        <div>
+                            <h4 class="font-bold">Rafael Santos</h4>
+                            <p class="text-gray-500 text-sm">Empreendedor Digital</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section class="py-16 bg-gray-50">
+        <div class="container mx-auto px-6 max-w-4xl">
+            <h2 class="text-3xl font-bold text-center mb-12">Perguntas Frequentes</h2>
+            
+            <div class="space-y-6">
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="font-bold text-xl mb-2">É realmente gratuito?</h3>
+                    <p class="text-gray-600">Sim, o serviço básico é 100% gratuito. Futuramente, ofereceremos recursos premium opcionais para quem deseja funcionalidades avançadas.</p>
+                </div>
+                
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="font-bold text-xl mb-2">Com que frequência receberei as mensagens?</h3>
+                    <p class="text-gray-600">Você pode escolher a frequência durante o processo de onboarding. Oferecemos opções de alta frequência (3x ao dia), média (1x ao dia) ou baixa (3x por semana).</p>
+                </div>
+                
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="font-bold text-xl mb-2">Como faço perguntas específicas?</h3>
+                    <p class="text-gray-600">Basta enviar sua pergunta pelo WhatsApp. Nossa IA irá analisar e responder com as informações mais relevantes e atualizadas sobre o tópico.</p>
+                </div>
+                
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="font-bold text-xl mb-2">Posso cancelar a qualquer momento?</h3>
+                    <p class="text-gray-600">Sim, você pode enviar "cancelar" a qualquer momento para parar de receber nossas mensagens.</p>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="font-bold text-xl mb-2">Quais comandos posso usar na plataforma?</h3>
+                    <p class="text-gray-600">A plataforma aceita diversos comandos como "/ferramenta" para recomendações de ferramentas, "/case" para estudos de caso, "/tendencia" para relatórios de tendências e "/ajuda" para ver todos os comandos disponíveis.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="py-16 gradient-bg text-white">
+        <div class="container mx-auto px-6 max-w-4xl text-center">
+            <h2 class="text-3xl font-bold mb-6">Pronto para transformar suas estratégias de marketing?</h2>
+            <p class="text-xl mb-8">Junte-se a centenas de profissionais de marketing que já estão um passo à frente.</p>
+            <a href="#signup-form" class="bg-white text-blue-600 hover:bg-gray-100 transition duration-300 font-bold py-3 px-8 rounded-md text-lg">Inscreva-se agora</a>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-gray-400 py-12">
+        <div class="container mx-auto px-6 max-w-6xl">
+            <div class="grid md:grid-cols-4 gap-8">
+                <div>
+                    <h3 class="text-white text-lg font-bold mb-4">Radar de Tendências</h3>
+                    <p class="mb-4">Sua fonte diária de insights sobre marketing digital e ferramentas de IA.</p>
+                    <div class="flex space-x-4">
+                        <a href="#" class="hover:text-white"><i class="fab fa-instagram"></i></a>
+                        <a href="#" class="hover:text-white"><i class="fab fa-linkedin"></i></a>
+                        <a href="#" class="hover:text-white"><i class="fab fa-twitter"></i></a>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3 class="text-white text-lg font-bold mb-4">Links Rápidos</h3>
+                    <ul class="space-y-2">
+                        <li><a href="#" class="hover:text-white">Início</a></li>
+                        <li><a href="#" class="hover:text-white">Sobre</a></li>
+                        <li><a href="#" class="hover:text-white">FAQ</a></li>
+                        <li><a href="#" class="hover:text-white">Contato</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h3 class="text-white text-lg font-bold mb-4">Recursos</h3>
+                    <ul class="space-y-2">
+                        <li><a href="#" class="hover:text-white">Blog</a></li>
+                        <li><a href="#" class="hover:text-white">Ferramentas</a></li>
+                        <li><a href="#" class="hover:text-white">Ebooks</a></li>
+                        <li><a href="#" class="hover:text-white">Webinars</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h3 class="text-white text-lg font-bold mb-4">Legal</h3>
+                    <ul class="space-y-2">
+                        <li><a href="#" class="hover:text-white">Termos de Uso</a></li>
+                        <li><a href="#" class="hover:text-white">Política de Privacidade</a></li>
+                        <li><a href="#" class="hover:text-white">Cookies</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="border-t border-gray-800 mt-8 pt-8 text-center">
+                <p>&copy; 2025 Radar de Tendências em Marketing Digital. Todos os direitos reservados.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Script para validação e envio do formulário
+        document.getElementById('signup-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const name = document.getElementById('name').value;
+            const phone = document.getElementById('phone').value;
+            const email = document.getElementById('email').value;
+            const role = document.getElementById('role').value;
+            
+            // Validação básica
+            if (!name || !phone || !email || !role) {
+                alert('Por favor, preencha todos os campos.');
+                return;
+            }
+            
+            // Aqui você chamaria a API para registrar o lead
+            // Esta é uma simulação - você precisará implementar a chamada real da API
+            fetch('https://api.example.com/api/leads', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': 'SUA_API_KEY'
+                },
+                body: JSON.stringify({
+                    name,
+                    phone,
+                    email,
+                    role,
+                    source: 'landing_page'
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Simulação de sucesso
+                alert('Obrigado! Em breve você receberá nossa mensagem de boas-vindas no WhatsApp.');
+                
+                // Limpar formulário
+                document.getElementById('signup-form').reset();
+                
+                // Redirecionar para página de agradecimento
+                // window.location.href = '/obrigado';
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                alert('Ocorreu um erro ao enviar seus dados. Por favor, tente novamente.');
+            });
+        });
+    </script>
+</body>
+</html>

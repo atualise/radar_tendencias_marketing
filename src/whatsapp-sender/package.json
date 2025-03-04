@@ -1,0 +1,10 @@
+{
+  "name": "whatsapp-sender-function",
+  "version": "1.0.0",
+  "description": "Função para enviar mensagens via WhatsApp API",
+  "main": "index.js",
+  "dependencies": {
+    "aws-sdk": "^2.1413.0",
+    "axios": "^1.4.0"
+  }
+} 

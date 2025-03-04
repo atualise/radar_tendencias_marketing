@@ -1,0 +1,27 @@
+{
+  "name": "radar-tendencias-marketing",
+  "version": "1.0.0",
+  "description": "Sistema de Radar de Tendências em Marketing Digital via WhatsApp",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest",
+    "deploy": "sam build && sam deploy --guided",
+    "deploy:dev": "sam build && sam deploy --config-env dev",
+    "deploy:prod": "sam build && sam deploy --config-env prod",
+    "start-local": "sam local start-api",
+    "invoke-local": "sam local invoke"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "aws-sdk": "^2.1692.0",
+    "axios": "^1.4.0",
+    "body-parser": "^1.20.3",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "jest": "^29.5.0"
+  }
+}

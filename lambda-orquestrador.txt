@@ -1,0 +1,627 @@
+// Orquestrador de Respostas
+// Este Lambda processa mensagens da fila SQS, determina o tipo de resposta necessária
+// e coordena a geração de conteúdo personalizado
+
+const AWS = require('aws-sdk');
+const { v4: uuidv4 } = require('uuid');
+const dynamoDB = new AWS.DynamoDB.DocumentClient();
+const sqs = new AWS.SQS();
+const lambda = new AWS.Lambda();
+const axios = require('axios');
+
+// Configurações
+const USERS_TABLE = process.env.USERS_TABLE || 'usuarios';
+const INTERACTIONS_TABLE = process.env.INTERACTIONS_TABLE || 'interacoes';
+const CONTENTS_TABLE = process.env.CONTENTS_TABLE || 'conteudos';
+const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY;
+const CLAUDE_API_URL = process.env.CLAUDE_API_URL || 'https://api.anthropic.com/v1/messages';
+const WHATSAPP_SENDER_LAMBDA = process.env.WHATSAPP_SENDER_LAMBDA;
+const MAX_TOKENS = process.env.MAX_TOKENS || 1000;
+
+exports.handler = async (event) => {
+  // Processar registros da fila SQS
+  const records = event.Records || [];
+  console.log(`Processando ${records.length} mensagens da fila`);
+  
+  for (const record of records) {
+    try {
+      const message = JSON.parse(record.body);
+      
+      console.log('Processando mensagem:', JSON.stringify(message));
+      
+      // Extrair dados principais
+      const { userId, interactionId, content, context, type } = message;
+      
+      // Buscar dados completos do usuário
+      const user = await getUserData(userId);
+      if (!user) {
+        console.error(`Usuário não encontrado: ${userId}`);
+        continue;
+      }
+      
+      // Buscar detalhes da interação
+      const interaction = await getInteractionData(interactionId);
+      if (!interaction) {
+        console.error(`Interação não encontrada: ${interactionId}`);
+        continue;
+      }
+      
+      // Determinar tipo de resposta necessária
+      const responseType = await determineResponseType(user, interaction, context);
+      
+      // Gerar resposta apropriada
+      const response = await generateResponse(responseType, user, interaction, context);
+      
+      // Enviar resposta ao usuário
+      await sendResponse(user, response, interactionId);
+      
+      // Atualizar dados de interação e perfil do usuário
+      await updateInteractionWithResponse(interactionId, response);
+      await updateUserProfile(userId, interaction, response);
+      
+    } catch (error) {
+      console.error('Erro ao processar mensagem da fila:', error);
+      console.error('Mensagem original:', record.body);
+      
+      // Em uma implementação completa, aqui tratariamos erros de maneira mais robusta
+      // Por exemplo, movendo para uma DLQ ou tentando uma estratégia alternativa
+    }
+  }
+  
+  return { processed: records.length };
+};
+
+// Busca dados completos do usuário
+async function getUserData(userId) {
+  const result = await dynamoDB.get({
+    TableName: USERS_TABLE,
+    Key: { userId }
+  }).promise();
+  
+  return result.Item;
+}
+
+// Busca detalhes da interação
+async function getInteractionData(interactionId) {
+  const result = await dynamoDB.get({
+    TableName: INTERACTIONS_TABLE,
+    Key: { interactionId }
+  }).promise();
+  
+  return result.Item;
+}
+
+// Determina o tipo de resposta adequado para a interação
+async function determineResponseType(user, interaction, context) {
+  // Verificar se é um comando específico
+  if (interaction.type === 'command') {
+    return {
+      type: 'command_response',
+      commandType: interaction.contentType
+    };
+  }
+  
+  // Verificar se usuário está em processo de onboarding
+  if (!user.onboardingCompleted) {
+    return {
+      type: 'onboarding',
+      step: context?.stage === 'onboarding' ? context.step : 'welcome'
+    };
+  }
+  
+  // Analisar conteúdo da mensagem para determinar intenção
+  // Em uma implementação completa, usaríamos NLP mais robusto aqui
+  const content = interaction.content.toLowerCase();
+  
+  if (content.includes('obrigad') || content.includes('valeu') || content.includes('thanks')) {
+    return { type: 'acknowledgment' };
+  }
+  
+  if (content.includes('?') || 
+      content.includes('como') || 
+      content.includes('qual') || 
+      content.includes('quais') ||
+      content.includes('onde') ||
+      content.includes('quando')) {
+    return { type: 'question_answer' };
+  }
+  
+  if (content.includes('ferramenta') || 
+      content.includes('tool') || 
+      content.includes('aplicativo') || 
+      content.includes('app') ||
+      content.includes('software')) {
+    return { type: 'tool_recommendation' };
+  }
+  
+  if (content.includes('tendência') || 
+      content.includes('tendencia') || 
+      content.includes('trend') || 
+      content.includes('futuro') ||
+      content.includes('novidade')) {
+    return { type: 'trend_insight' };
+  }
+  
+  // Resposta padrão se não conseguir determinar
+  return { type: 'general_response' };
+}
+
+// Gera resposta baseada no tipo determinado
+async function generateResponse(responseType, user, interaction, context) {
+  const { type } = responseType;
+  
+  // ID único para a resposta
+  const responseId = `resp${uuidv4().replace(/-/g, '')}`;
+  
+  // Estrutura básica da resposta
+  const response = {
+    responseId,
+    interactionId: interaction.interactionId,
+    userId: user.userId,
+    responseType: type,
+    timestamp: new Date().toISOString(),
+    channel: 'whatsapp'
+  };
+  
+  // Gerar conteúdo específico baseado no tipo
+  switch (type) {
+    case 'onboarding':
+      response.content = await generateOnboardingResponse(responseType.step, user);
+      break;
+      
+    case 'command_response':
+      response.content = await generateCommandResponse(responseType.commandType, interaction.content, user);
+      break;
+      
+    case 'question_answer':
+      response.content = await generateQuestionAnswer(interaction.content, user);
+      break;
+      
+    case 'tool_recommendation':
+      response.content = await generateToolRecommendation(interaction.content, user);
+      break;
+      
+    case 'trend_insight':
+      response.content = await generateTrendInsight(interaction.content, user);
+      break;
+      
+    case 'acknowledgment':
+      response.content = generateAcknowledgment(user);
+      break;
+      
+    case 'general_response':
+    default:
+      response.content = await generateGeneralResponse(interaction.content, user);
+      break;
+  }
+  
+  // Adicionar metadados e enriquecimentos
+  response.contentLength = response.content.length;
+  response.isPersonalized = true;
+  
+  return response;
+}
+
+// Gera resposta para etapa de onboarding
+async function generateOnboardingResponse(step, user) {
+  // Em uma implementação completa, teríamos um fluxo detalhado de onboarding
+  // Com perguntas específicas em cada etapa
+  
+  const onboardingSteps = {
+    welcome: `Olá ${user.name || ''}! 👋 Bem-vindo ao Radar de Tendências em Marketing Digital. Vou te ajudar a ficar por dentro das últimas novidades, ferramentas e estratégias. Para começar, poderia me contar qual é o seu cargo ou função profissional? (Ex: gerente de marketing, social media, empreendedor...)`,
+    
+    profile_question: 'Obrigado! Em qual setor ou indústria você atua principalmente?',
+    
+    interests_question: 'Ótimo! Quais áreas do marketing digital mais interessam a você? (Ex: mídias sociais, SEO, e-mail marketing, conteúdo, performance, etc)',
+    
+    tools_question: 'Quais ferramentas de marketing você utiliza atualmente no seu trabalho?',
+    
+    challenges_question: 'Quais são seus maiores desafios ou dificuldades no marketing digital atualmente?',
+    
+    finishing: `Perfeito! Baseado no que você me contou, vou personalizar o conteúdo para seus interesses. Você receberá atualizações sobre tendências, ferramentas e dicas práticas. A qualquer momento, você pode usar comandos como:\n\n/ferramenta - para buscar ferramentas\n/tendencia - para ver tendências recentes\n/case - para estudos de caso\n/ajuda - para ver todos os comandos\n\nVocê prefere receber quantas atualizações por dia? (Responda com "poucas", "médias" ou "muitas")`
+  };
+  
+  return onboardingSteps[step] || onboardingSteps.welcome;
+}
+
+// Gera resposta para comandos específicos
+async function generateCommandResponse(commandType, content, user) {
+  switch (commandType) {
+    case 'tool_recommendation':
+      return await generateToolRecommendation(content, user);
+      
+    case 'case_study':
+      return await generateCaseStudy(content, user);
+      
+    case 'trend_report':
+      return await generateTrendInsight(content, user);
+      
+    case 'help_menu':
+    default:
+      return `Olá ${user.name || 'Especialista'}! 👋 Aqui estão os comandos disponíveis:\n\n` +
+        `📊 /tendencia - Descubra tendências recentes em marketing digital\n` +
+        `🛠️ /ferramenta - Recomendações de ferramentas para necessidades específicas\n` +
+        `📚 /case - Estudos de caso e exemplos práticos\n` +
+        `❓ /ajuda - Mostra esta lista de comandos\n\n` +
+        `Você também pode me perguntar qualquer coisa sobre marketing digital, ferramentas e estratégias!`;
+  }
+}
+
+// Gera resposta para perguntas gerais
+async function generateQuestionAnswer(question, user) {
+  // Usar Claude para gerar resposta personalizada
+  const preferredFormat = user.preferences?.preferredContentFormat || 'detailed';
+  const interests = user.preferences?.interests || [];
+  const topInterests = interests.slice(0, 3).map(i => i.category).join(', ');
+  
+  const prompt = createClaudePrompt({
+    role: 'assistant',
+    type: 'question_answer',
+    userQuestion: question,
+    userProfile: {
+      role: user.profile?.role,
+      interests: topInterests,
+      level: determineUserLevel(user)
+    },
+    format: preferredFormat
+  });
+  
+  const claudeResponse = await callClaudeAPI(prompt);
+  return claudeResponse.trim();
+}
+
+// Gera recomendação de ferramenta
+async function generateToolRecommendation(content, user) {
+  // Primeiro verificar se temos recomendações pré-geradas no banco
+  const toolQuery = content.toLowerCase().replace('/ferramenta', '').replace('/tool', '').trim();
+  
+  // Buscar ferramentas relacionadas no DynamoDB
+  let relatedTools;
+  try {
+    const queryResult = await dynamoDB.query({
+      TableName: CONTENTS_TABLE,
+      IndexName: 'typeIndex',
+      KeyConditionExpression: 'contentType = :type',
+      FilterExpression: 'contains(tags, :tag)',
+      ExpressionAttributeValues: {
+        ':type': 'tool_recommendation',
+        ':tag': extractMainTopic(toolQuery || 'geral')
+      }
+    }).promise();
+    
+    relatedTools = queryResult.Items;
+  } catch (error) {
+    console.error('Erro ao buscar ferramentas:', error);
+    relatedTools = [];
+  }
+  
+  // Se encontrou ferramentas no banco, usar esse conteúdo
+  if (relatedTools && relatedTools.length > 0) {
+    const tool = relatedTools[0];
+    const format = user.preferences?.preferredContentFormat || 'detailed';
+    
+    return tool.versions[format] || tool.versions.detailed;
+  }
+  
+  // Caso contrário, gerar com Claude
+  const prompt = createClaudePrompt({
+    role: 'assistant',
+    type: 'tool_recommendation',
+    userQuery: toolQuery || 'marketing digital',
+    userProfile: {
+      role: user.profile?.role,
+      interests: user.preferences?.interests.map(i => i.category).join(', ') || 'marketing digital',
+      toolsUsed: user.profile?.toolsUsed?.join(', ') || ''
+    },
+    format: user.preferences?.preferredContentFormat || 'detailed'
+  });
+  
+  const claudeResponse = await callClaudeAPI(prompt);
+  return claudeResponse.trim();
+}
+
+// Gera insights sobre tendências
+async function generateTrendInsight(content, user) {
+  const trendQuery = content.toLowerCase().replace('/tendencia', '').replace('/tendência', '').replace('/trend', '').trim();
+  
+  // Prompt para o Claude
+  const prompt = createClaudePrompt({
+    role: 'assistant',
+    type: 'trend_insight',
+    userQuery: trendQuery || 'marketing digital',
+    userProfile: {
+      role: user.profile?.role,
+      interests: user.preferences?.interests.map(i => i.category).join(', ') || 'marketing digital',
+      level: determineUserLevel(user)
+    },
+    format: user.preferences?.preferredContentFormat || 'detailed'
+  });
+  
+  const claudeResponse = await callClaudeAPI(prompt);
+  return claudeResponse.trim();
+}
+
+// Gera estudo de caso
+async function generateCaseStudy(content, user) {
+  const caseQuery = content.toLowerCase().replace('/case', '').replace('/caso', '').trim();
+  
+  // Prompt para o Claude
+  const prompt = createClaudePrompt({
+    role: 'assistant',
+    type: 'case_study',
+    userQuery: caseQuery || 'marketing digital',
+    userProfile: {
+      role: user.profile?.role,
+      interests: user.preferences?.interests.map(i => i.category).join(', ') || 'marketing digital',
+      industry: user.profile?.industry || 'geral'
+    },
+    format: user.preferences?.preferredContentFormat || 'detailed'
+  });
+  
+  const claudeResponse = await callClaudeAPI(prompt);
+  return claudeResponse.trim();
+}
+
+// Gera uma resposta de agradecimento personalizada
+function generateAcknowledgment(user) {
+  const responses = [
+    `Foi um prazer ajudar! Estou aqui quando precisar de mais informações sobre marketing digital.`,
+    `Que bom que pude ser útil! Alguma outra dúvida sobre ferramentas ou estratégias?`,
+    `Disponha! Continue enviando suas perguntas sobre as tendências do marketing digital.`,
+    `Por nada! Lembre-se que você pode usar /ferramenta ou /tendencia para descobrir mais novidades.`
+  ];
+  
+  return responses[Math.floor(Math.random() * responses.length)];
+}
+
+// Gera uma resposta geral para mensagens não categorizadas
+async function generateGeneralResponse(content, user) {
+  // Prompt para o Claude
+  const prompt = createClaudePrompt({
+    role: 'assistant',
+    type: 'general_response',
+    userMessage: content,
+    userProfile: {
+      role: user.profile?.role,
+      interests: user.preferences?.interests.map(i => i.category).join(', ') || 'marketing digital',
+      level: determineUserLevel(user)
+    }
+  });
+  
+  const claudeResponse = await callClaudeAPI(prompt);
+  return claudeResponse.trim();
+}
+
+// Envia resposta para o usuário
+async function sendResponse(user, response, interactionId) {
+  // Enviar através do Lambda específico para WhatsApp
+  await lambda.invoke({
+    FunctionName: WHATSAPP_SENDER_LAMBDA,
+    InvocationType: 'Event', // assíncrono
+    Payload: JSON.stringify({
+      phoneNumber: user.phoneNumber,
+      message: response.content,
+      metadata: {
+        responseId: response.responseId,
+        interactionId,
+        responseType: response.responseType
+      }
+    })
+  }).promise();
+  
+  // Salvar resposta no DynamoDB
+  const responseInteraction = {
+    interactionId: `int${uuidv4().replace(/-/g, '')}`,
+    userId: user.userId,
+    timestamp: new Date().toISOString(),
+    channel: 'whatsapp',
+    direction: 'outgoing',
+    type: 'message',
+    contentType: response.responseType,
+    content: response.content,
+    context: {
+      previousInteractionId: interactionId,
+      responseToInteractionId: interactionId,
+      responseId: response.responseId
+    },
+    metrics: {
+      deliveryStatus: 'sent',
+      responseTime: calculateResponseTime(interactionId)
+    }
+  };
+  
+  await dynamoDB.put({
+    TableName: INTERACTIONS_TABLE,
+    Item: responseInteraction
+  }).promise();
+}
+
+// Atualiza a interação original com informações da resposta
+async function updateInteractionWithResponse(interactionId, response) {
+  await dynamoDB.update({
+    TableName: INTERACTIONS_TABLE,
+    Key: { interactionId },
+    UpdateExpression: 'set responseReceived = :true, responseId = :respId, responseType = :respType, responseTimestamp = :timestamp',
+    ExpressionAttributeValues: {
+      ':true': true,
+      ':respId': response.responseId,
+      ':respType': response.responseType,
+      ':timestamp': new Date().toISOString()
+    }
+  }).promise();
+}
+
+// Atualiza o perfil do usuário baseado nas interações
+async function updateUserProfile(userId, interaction, response) {
+  // Em uma implementação completa, aqui faríamos atualização de
+  // interesses, preferências e outras informações do perfil baseado
+  // nas interações e análise das mensagens
+  
+  // Exemplo de atualização básica
+  await dynamoDB.update({
+    TableName: USERS_TABLE,
+    Key: { userId },
+    UpdateExpression: 'set lastInteraction = :timestamp, engagement.engagementScore = engagement.engagementScore + :score',
+    ExpressionAttributeValues: {
+      ':timestamp': new Date().toISOString(),
+      ':score': calculateEngagementScore(interaction, response)
+    }
+  }).promise();
+}
+
+// Funções auxiliares
+
+// Cria prompt apropriado para Claude API
+function createClaudePrompt({ role, type, userMessage, userQuestion, userQuery, userProfile, format }) {
+  switch (type) {
+    case 'question_answer':
+      return {
+        system: `Você é um assistente especializado em marketing digital, particularmente atualizado em ferramentas de IA e tendências para 2025. 
+                 Você está respondendo para um profissional de marketing com o perfil: ${JSON.stringify(userProfile)}.
+                 Mantenha respostas informativas, práticas e atualizadas. Use tom profissional e amigável.
+                 A resposta deve ser no formato ${format} - 'brief' significa concisa (2-3 parágrafos), 'detailed' significa abrangente (4-6 parágrafos com exemplos).`,
+        messages: [
+          { role: "user", content: userQuestion }
+        ]
+      };
+      
+    case 'tool_recommendation':
+      return {
+        system: `Você é um assistente especializado em recomendar ferramentas de marketing digital, com foco especial em soluções de IA para 2025.
+                 Você está recomendando para um profissional com perfil: ${JSON.stringify(userProfile)}.
+                 Ao recomendar ferramentas, sempre mencione: principais recursos, caso de uso ideal, faixa de preço aproximada, e uma alternativa gratuita quando possível.
+                 Recomende especificamente para a consulta do usuário, não seja genérico.
+                 Inclua links de afiliados para Hotmart e Eduzz quando aplicável (use placeholder "LINK_AFILIADO").`,
+        messages: [
+          { role: "user", content: `Preciso de recomendações de ferramentas para: ${userQuery}` }
+        ]
+      };
+      
+    case 'trend_insight':
+      return {
+        system: `Você é um especialista em tendências de marketing digital para 2025 e além.
+                 Você está compartilhando insights com um profissional com perfil: ${JSON.stringify(userProfile)}.
+                 Foque em tendências atuais e emergentes, evitando informações desatualizadas.
+                 Mencione como a tendência impacta o nicho específico do usuário e como ele pode se preparar.
+                 Seja específico, cite exemplos e casos reais, e inclua dados quando relevante.`,
+        messages: [
+          { role: "user", content: `Quais são as tendências atuais ou emergentes relacionadas a: ${userQuery}` }
+        ]
+      };
+      
+    case 'case_study':
+      return {
+        system: `Você é um especialista em análise de casos de sucesso em marketing digital.
+                 Você está compartilhando com um profissional com perfil: ${JSON.stringify(userProfile)}.
+                 Ao apresentar casos, inclua: contexto/problema, estratégia implementada, ferramentas utilizadas, resultados obtidos e lições aprendidas.
+                 Priorize casos recentes e relevantes para o setor do usuário.
+                 Seja específico e inclua dados quantitativos quando possível.`,
+        messages: [
+          { role: "user", content: `Me conte sobre casos de sucesso relacionados a: ${userQuery}` }
+        ]
+      };
+      
+    case 'general_response':
+    default:
+      return {
+        system: `Você é um assistente de marketing digital especializado em tendências, ferramentas e estratégias para 2025.
+                 Você está conversando com um profissional com perfil: ${JSON.stringify(userProfile)}.
+                 Seja útil, informativo e prático. Mantenha respostas concisas mas completas.
+                 Quando apropriado, sugira comandos específicos (/ferramenta, /tendencia, /case) para informações mais detalhadas.`,
+        messages: [
+          { role: "user", content: userMessage }
+        ]
+      };
+  }
+}
+
+// Chama a API do Claude para gerar respostas
+async function callClaudeAPI(prompt) {
+  try {
+    const response = await axios.post(
+      CLAUDE_API_URL,
+      {
+        model: "claude-3-haiku-20240307",
+        max_tokens: MAX_TOKENS,
+        system: prompt.system,
+        messages: prompt.messages
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': CLAUDE_API_KEY,
+          'anthropic-version': '2023-06-01'
+        }
+      }
+    );
+    
+    return response.data.content[0].text;
+  } catch (error) {
+    console.error('Erro ao chamar Claude API:', error);
+    
+    // Resposta de fallback em caso de erro
+    return "Desculpe, estou com dificuldades para processar sua solicitação no momento. Por favor, tente novamente em instantes ou use um dos comandos disponíveis como /ajuda.";
+  }
+}
+
+// Extrai o tópico principal de uma mensagem
+function extractMainTopic(message) {
+  // Em uma implementação completa, usaria NLP mais sofisticada
+  // Versão simplificada extrai palavras-chave
+  const keywords = [
+    'instagram', 'facebook', 'tiktok', 'linkedin', 'twitter', 'social', 'rede', 
+    'email', 'e-mail', 'newsletter', 'automação', 'automacao', 'automation',
+    'seo', 'sem', 'ads', 'anúncio', 'anuncio', 'publicidade', 'marketing', 
+    'conteúdo', 'conteudo', 'content', 'lead', 'conversão', 'conversao', 'conversion',
+    'crm', 'cliente', 'customer', 'analytics', 'análise', 'analise', 'dados', 'data',
+    'ia', 'ai', 'inteligência', 'inteligencia', 'intelligence'
+  ];
+  
+  const messageLower = message.toLowerCase();
+  
+  for (const keyword of keywords) {
+    if (messageLower.includes(keyword)) {
+      return keyword;
+    }
+  }
+  
+  return 'marketing';
+}
+
+// Determina o nível de experiência do usuário
+function determineUserLevel(user) {
+  const totalInteractions = user.engagement?.totalMessages || 0;
+  const experience = user.profile?.experience || 'unknown';
+  
+  // Combinar experiência declarada com engajamento
+  if (experience.includes('10+') || totalInteractions > 100) {
+    return 'expert';
+  } else if (experience.includes('5') || experience.includes('senior') || totalInteractions > 50) {
+    return 'advanced';
+  } else if (experience.includes('3') || experience.includes('junior') || totalInteractions > 20) {
+    return 'intermediate';
+  } else {
+    return 'beginner';
+  }
+}
+
+// Calcula tempo de resposta em segundos
+function calculateResponseTime(interactionId) {
+  // Em uma implementação real, calcularia a diferença entre timestamps
+  return 45; // valor de exemplo
+}
+
+// Calcula pontuação de engajamento para esta interação
+function calculateEngagementScore(interaction, response) {
+  // Lógica simplificada para cálculo de engajamento
+  // Uma implementação real seria mais sofisticada
+  
+  // Tipos de interação que indicam alto engajamento
+  const highEngagementTypes = ['question_answer', 'tool_recommendation', 'trend_insight'];
+  
+  if (highEngagementTypes.includes(response.responseType)) {
+    return 2;
+  }
+  
+  return 1;
+}

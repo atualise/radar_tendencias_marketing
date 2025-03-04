@@ -1,0 +1,426 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Description: >
+  Radar de Tendências em Marketing Digital - Infraestrutura Serverless
+  
+# Parâmetros que podem ser alterados durante o deploy
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+    Description: Ambiente de implantação
+
+  ClaudeApiKey:
+    Type: String
+    NoEcho: true
+    Description: Chave de API para o Claude (Anthropic)
+    
+  WhatsAppApiToken:
+    Type: String
+    NoEcho: true
+    Description: Token de autenticação da API do WhatsApp Business
+
+# Variáveis globais utilizadas em vários recursos
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 256
+    Runtime: nodejs18.x
+    Architectures:
+      - arm64
+    Environment:
+      Variables:
+        ENVIRONMENT: !Ref Environment
+        USERS_TABLE: !Sub "${AWS::StackName}-usuarios-${Environment}"
+        INTERACTIONS_TABLE: !Sub "${AWS::StackName}-interacoes-${Environment}"
+        CONTENTS_TABLE: !Sub "${AWS::StackName}-conteudos-${Environment}"
+        SQS_RESPONSE_QUEUE_URL: !Ref ResponseQueue
+        SQS_CONTENT_QUEUE_URL: !Ref ContentGenerationQueue
+        CLAUDE_API_KEY: !Ref ClaudeApiKey
+        CLAUDE_API_URL: 'https://api.anthropic.com/v1/messages'
+        MAX_TOKENS: 1000
+        WHATSAPP_API_TOKEN: !Ref WhatsAppApiToken
+
+Resources:
+  # API Gateway para receber webhooks e integrar APIs
+  ApiGateway:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: !Ref Environment
+      Cors:
+        AllowMethods: "'GET,POST,OPTIONS'"
+        AllowHeaders: "'Content-Type,Authorization,X-Api-Key'"
+        AllowOrigin: "'*'"
+      Auth:
+        ApiKeyRequired: true
+        UsagePlan:
+          CreateUsagePlan: PER_API
+          Description: Usage plan for Radar de Tendências API
+          Quota:
+            Limit: 5000
+            Period: MONTH
+          Throttle:
+            BurstLimit: 200
+            RateLimit: 100
+
+  # Função para processar webhooks do WhatsApp
+  ProcessadorMensagensFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/processador-mensagens/
+      Handler: index.handler
+      Description: Processa webhooks recebidos do WhatsApp
+      Events:
+        WhatsAppWebhook:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /webhook/whatsapp
+            Method: post
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UsuariosTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref InteracoesTable
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt ResponseQueue.QueueName
+        - EventBridgePutEventsPolicy:
+            EventBusName: default
+
+  # Função para processar leads da landing page
+  ProcessadorLeadsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/processador-leads/
+      Handler: index.handler
+      Description: Processa leads capturados na landing page
+      Events:
+        LeadCapture:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /leads
+            Method: post
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UsuariosTable
+        - EventBridgePutEventsPolicy:
+            EventBusName: default
+
+  # Função de orquestração de respostas
+  OrquestradorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/orquestrador/
+      Handler: index.handler
+      Description: Orquestra a geração de respostas personalizadas
+      Timeout: 60
+      MemorySize: 512
+      Events:
+        SQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt ResponseQueue.Arn
+            BatchSize: 1
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UsuariosTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref InteracoesTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ConteudosTable
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt ContentGenerationQueue.QueueName
+        - Statement:
+            - Effect: Allow
+              Action:
+                - lambda:InvokeFunction
+              Resource: !GetAtt WhatsAppSenderFunction.Arn
+
+  # Função para geração de conteúdo
+  GeradorConteudoFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/gerador-conteudo/
+      Handler: index.handler
+      Description: Gera conteúdo personalizado usando Claude API
+      Timeout: 120
+      MemorySize: 1024
+      Events:
+        SQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt ContentGenerationQueue.Arn
+            BatchSize: 1
+        ScheduledEvent:
+          Type: Schedule
+          Properties:
+            Schedule: cron(0 8 * * ? *)
+            Name: DailyMorningContent
+            Description: Gera conteúdo diário matinal
+            Enabled: true
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UsuariosTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ConteudosTable
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt ResponseQueue.QueueName
+
+  # Função para enviar mensagens pelo WhatsApp
+  WhatsAppSenderFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/whatsapp-sender/
+      Handler: index.handler
+      Description: Envia mensagens para o WhatsApp Business API
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref InteracoesTable
+
+  # Função ETL para análise de dados
+  ETLFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/etl/
+      Handler: index.handler
+      Description: Processa dados para análise
+      Timeout: 180
+      MemorySize: 1024
+      Events:
+        ScheduledEvent:
+          Type: Schedule
+          Properties:
+            Schedule: cron(0 3 * * ? *)
+            Name: DailyETL
+            Description: Processa diariamente dados para análise
+            Enabled: true
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UsuariosTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref InteracoesTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ConteudosTable
+        - S3CrudPolicy:
+            BucketName: !Ref DataLakeBucket
+
+  # Tabela de Usuários
+  UsuariosTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "${AWS::StackName}-usuarios-${Environment}"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: userId
+          AttributeType: S
+        - AttributeName: phoneNumber
+          AttributeType: S
+        - AttributeName: primaryInterest
+          AttributeType: S
+        - AttributeName: engagementScore
+          AttributeType: N
+      KeySchema:
+        - AttributeName: userId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: phoneIndex
+          KeySchema:
+            - AttributeName: phoneNumber
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: interestIndex
+          KeySchema:
+            - AttributeName: primaryInterest
+              KeyType: HASH
+            - AttributeName: engagementScore
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+
+  # Tabela de Interações
+  InteracoesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "${AWS::StackName}-interacoes-${Environment}"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: interactionId
+          AttributeType: S
+        - AttributeName: userId
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: S
+        - AttributeName: contentType
+          AttributeType: S
+      KeySchema:
+        - AttributeName: interactionId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: userInteractionsIndex
+          KeySchema:
+            - AttributeName: userId
+              KeyType: HASH
+            - AttributeName: timestamp
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: contentTypeIndex
+          KeySchema:
+            - AttributeName: contentType
+              KeyType: HASH
+            - AttributeName: timestamp
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+
+  # Tabela de Conteúdos
+  ConteudosTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "${AWS::StackName}-conteudos-${Environment}"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: contentId
+          AttributeType: S
+        - AttributeName: contentType
+          AttributeType: S
+        - AttributeName: createdAt
+          AttributeType: S
+        - AttributeName: primaryCategory
+          AttributeType: S
+        - AttributeName: popularity
+          AttributeType: N
+      KeySchema:
+        - AttributeName: contentId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: typeIndex
+          KeySchema:
+            - AttributeName: contentType
+              KeyType: HASH
+            - AttributeName: createdAt
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: categoryIndex
+          KeySchema:
+            - AttributeName: primaryCategory
+              KeyType: HASH
+            - AttributeName: popularity
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+
+  # Fila SQS para respostas
+  ResponseQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "${AWS::StackName}-response-queue-${Environment}"
+      VisibilityTimeout: 120
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt ResponseDLQ.Arn
+        maxReceiveCount: 3
+
+  # Fila DLQ para respostas
+  ResponseDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "${AWS::StackName}-response-dlq-${Environment}"
+      MessageRetentionPeriod: 1209600 # 14 dias
+
+  # Fila SQS para geração de conteúdo
+  ContentGenerationQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "${AWS::StackName}-content-queue-${Environment}"
+      VisibilityTimeout: 300
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt ContentDLQ.Arn
+        maxReceiveCount: 3
+
+  # Fila DLQ para geração de conteúdo
+  ContentDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "${AWS::StackName}-content-dlq-${Environment}"
+      MessageRetentionPeriod: 1209600 # 14 dias
+
+  # Bucket S3 para site estático (landing page)
+  WebsiteBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${AWS::StackName}-website-${Environment}"
+      AccessControl: PublicRead
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: error.html
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders:
+              - '*'
+            AllowedMethods:
+              - GET
+            AllowedOrigins:
+              - '*'
+            MaxAge: 3600
+
+  # Política de acesso público ao bucket do site
+  WebsiteBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref WebsiteBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action: 's3:GetObject'
+            Resource: !Sub "arn:aws:s3:::${WebsiteBucket}/*"
+
+  # Bucket S3 para data lake
+  DataLakeBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${AWS::StackName}-datalake-${Environment}"
+      VersioningConfiguration:
+        Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+          - Id: TransitionToGlacierRule
+            Status: Enabled
+            Transitions:
+              - TransitionInDays: 90
+                StorageClass: GLACIER
+            ExpirationInDays: 365
+
+Outputs:
+  ApiEndpoint:
+    Description: "URL da API"
+    Value: !Sub "https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${Environment}"
+
+  WebsiteURL:
+    Description: "URL do site"
+    Value: !GetAtt WebsiteBucket.WebsiteURL
+
+  UsersTable:
+    Description: "Nome da tabela de usuários"
+    Value: !Ref UsuariosTable
+
+  InteractionsTable:
+    Description: "Nome da tabela de interações"
+    Value: !Ref InteracoesTable
+
+  ContentsTable:
+    Description: "Nome da tabela de conteúdos"
+    Value: !Ref ConteudosTable
+
+  DataLakeBucketName:
+    Description: "Nome do bucket do data lake"
+    Value: !Ref DataLakeBucket

@@ -1,0 +1,40 @@
+sequenceDiagram
+    participant U as Usuário
+    participant L as Landing Page
+    participant A as API Gateway
+    participant F as Lambda (Processador de Leads)
+    participant W as WhatsApp
+    participant P as Lambda (Processador de Mensagens)
+    participant O as Lambda (Orquestrador)
+    participant C as Claude API
+    
+    U->>L: Preenche formulário na landing page
+    L->>A: Submete dados
+    A->>F: Encaminha requisição
+    F->>F: Valida e enriquece dados
+    
+    F->>W: Envia mensagem de boas-vindas
+    W->>U: Recebe mensagem de boas-vindas
+    
+    Note over U,W: Inicia questionário de onboarding
+    
+    W->>U: Pergunta 1: Perfil profissional
+    U->>W: Responde perfil
+    W->>P: Webhook com resposta
+    P->>O: Processa resposta
+    O->>C: Analisa resposta e gera próxima pergunta
+    C->>O: Retorna análise e pergunta
+    O->>W: Envia próxima pergunta
+    W->>U: Recebe pergunta 2: Interesses
+    
+    Note over U,W: Continua questionário (5-7 perguntas)
+    
+    U->>W: Responde última pergunta
+    W->>P: Webhook com resposta
+    P->>O: Finaliza onboarding
+    O->>C: Gera perfil personalizado e plano inicial
+    C->>O: Retorna perfil e recomendações
+    O->>W: Envia resumo do perfil e primeiras recomendações
+    W->>U: Recebe resumo e primeiras dicas personalizadas
+    
+    Note over U,W: Usuário onboarded, inicia interações regulares
