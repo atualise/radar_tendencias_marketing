@@ -8,17 +8,45 @@ Description: >
 Parameters:
   Environment:
     Type: String
-    Default: dev
-    Description: Nome do ambiente (dev, prod)
+    Default: prod
+    Description: Ambiente de implantação (dev, test, prod)
     AllowedValues:
       - dev
-      - staging
+      - test
       - prod
   
   ClaudeAPIKey:
     Type: String
     NoEcho: true
     Description: Chave da API da Claude (Anthropic)
+  
+  ClaudeApiUrl:
+    Type: String
+    Default: https://api.anthropic.com/v1/messages
+    Description: URL da API Claude
+  
+  ClaudeModel:
+    Type: String
+    Default: claude-3-sonnet-20240229
+    Description: Modelo Claude a ser utilizado
+  
+  DeepSeekApiUrl:
+    Type: String
+    Default: http://localhost:11434/api/generate
+    Description: URL da API do Ollama para o modelo DeepSeek (ex. http://server-ip:11434/api/generate)
+  
+  DeepSeekModel:
+    Type: String
+    Default: deepseek-coder:33b
+    Description: Nome do modelo DeepSeek no Ollama
+  
+  UseClaudeFallback:
+    Type: String
+    Default: "true"
+    Description: Se deve usar Claude como fallback quando o DeepSeek falhar
+    AllowedValues:
+      - "true"
+      - "false"
   
   WhatsAppAPIToken:
     Type: String
@@ -33,6 +61,31 @@ Parameters:
     Type: String
     NoEcho: true
     Description: Token de verificação do webhook do WhatsApp
+
+  WhatsAppAPIVersion:
+    Type: String
+    Description: Versão da API do WhatsApp
+    Default: "v21.0"
+  
+  WhatsAppTokenParameterName:
+    Type: String
+    Description: Nome do parâmetro no SSM para armazenar o token do WhatsApp
+    Default: "/whatsapp/token"
+  
+  WhatsAppTokenSecretName:
+    Type: String
+    Description: Nome do segredo no Secrets Manager para armazenar as credenciais do WhatsApp
+    Default: "whatsapp/credentials"
+    
+  # Parâmetros para o domínio personalizado
+  DomainName:
+    Type: String
+    Default: antena.atualise.com
+    Description: Nome de domínio personalizado para a landing page
+    
+  CertificateArn:
+    Type: String
+    Description: ARN do certificado ACM para o domínio (deve ser na região us-east-1 para CloudFront)
 
 # Configurações globais para as funções
 Globals:
@@ -52,6 +105,8 @@ Globals:
         CLAUDE_API_KEY: !Ref ClaudeAPIKey
         WHATSAPP_API_TOKEN: !Ref WhatsAppAPIToken
         WHATSAPP_PHONE_NUMBER_ID: !Ref WhatsAppPhoneNumberId
+        TOKEN_PARAMETER_NAME: !Sub /antena/whatsapp/token-${Environment}
+        TOKEN_SECRET_NAME: !Sub antena/whatsapp/credentials-${Environment}
 
 Resources:
   # Tabelas DynamoDB
@@ -160,17 +215,94 @@ Resources:
       MessageRetentionPeriod: 1209600 # 14 dias
 
   # Funções Lambda
-  # Declarando o WhatsAppSenderFunction primeiro
+  # Gerenciador de Token do WhatsApp
+  WhatsAppTokenManagerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-WhatsAppTokenManager-${Environment}
+      CodeUri: src/whatsapp-token-manager/
+      Handler: index.handler
+      Description: Gerencia e atualiza tokens de acesso do WhatsApp
+      Runtime: nodejs20.x
+      MemorySize: 256
+      Timeout: 60
+      Environment:
+        Variables:
+          WHATSAPP_API_TOKEN: !Ref WhatsAppAPIToken
+          WHATSAPP_PHONE_NUMBER_ID: !Ref WhatsAppPhoneNumberId
+          TOKEN_PARAMETER_NAME: !Ref WhatsAppTokenParameterName
+          TOKEN_SECRET_NAME: !Ref WhatsAppTokenSecretName
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - ssm:PutParameter
+                - ssm:GetParameter
+              Resource: 
+                - !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${WhatsAppTokenParameterName}
+                - !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${WhatsAppTokenParameterName}/*
+        - Statement:
+            - Effect: Allow
+              Action:
+                - secretsmanager:GetSecretValue
+                - secretsmanager:DescribeSecret
+                - secretsmanager:PutSecretValue
+                - secretsmanager:UpdateSecret
+                - secretsmanager:CreateSecret
+              Resource: !Sub arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${WhatsAppTokenSecretName}*
+
+  # Regra para renovação automática do token
+  TokenRefreshRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub "${AWS::StackName}-TokenRefresh-${Environment}"
+      Description: "Renovação automática do token do WhatsApp a cada 7 dias"
+      ScheduleExpression: "rate(7 days)"
+      State: ENABLED
+      Targets:
+        - Id: TokenRefreshTarget
+          Arn: !GetAtt WhatsAppTokenManagerFunction.Arn
+
+  # Permissão para o EventBridge acionar a função
+  TokenRefreshRulePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref WhatsAppTokenManagerFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt TokenRefreshRule.Arn
+
+  # Função para envio de mensagens WhatsApp
   WhatsAppSenderFunction:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub ${AWS::StackName}-WhatsAppSender-${Environment}
       CodeUri: src/whatsapp-sender/
       Handler: index.handler
-      Description: Envia mensagens via WhatsApp API
+      Description: Função para enviar mensagens via WhatsApp Business API
+      Environment:
+        Variables:
+          ENVIRONMENT: !Ref Environment
+          WHATSAPP_API_TOKEN: !Ref WhatsAppAPIToken
+          WHATSAPP_PHONE_NUMBER_ID: !Ref WhatsAppPhoneNumberId
+          WHATSAPP_API_VERSION: !Ref WhatsAppAPIVersion
+          TOKEN_MANAGER_LAMBDA: !GetAtt WhatsAppTokenManagerFunction.Arn
+          TOKEN_PARAMETER_NAME: !Ref WhatsAppTokenParameterName
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref InteractionsTable
+        - LambdaInvokePolicy:
+            FunctionName: !Ref WhatsAppTokenManagerFunction
+        - Statement:
+            - Effect: Allow
+              Action:
+                - ssm:GetParameter
+              Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${WhatsAppTokenParameterName}"
+        - Statement:
+            - Effect: Allow
+              Action:
+                - cloudwatch:PutMetricData
+              Resource: "*"
 
   # Demais funções depois
   WhatsAppWebhookFunction:
@@ -204,6 +336,7 @@ Resources:
       Environment:
         Variables:
           WHATSAPP_SENDER_FUNCTION: !GetAtt WhatsAppSenderFunction.Arn
+          SQS_RESPONSE_QUEUE_URL: !Ref ResponseQueue
       Events:
         ApiEvent:
           Type: Api
@@ -217,6 +350,8 @@ Resources:
             FunctionName: !Ref WhatsAppSenderFunction
         - EventBridgePutEventsPolicy:
             EventBusName: default
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt ResponseQueue.QueueName
 
   OrquestradorFunction:
     Type: AWS::Serverless::Function
@@ -247,6 +382,11 @@ Resources:
             QueueName: !GetAtt ContentQueue.QueueName
         - LambdaInvokePolicy:
             FunctionName: !Ref WhatsAppSenderFunction
+        - Statement:
+            - Effect: Allow
+              Action:
+                - cloudwatch:PutMetricData
+              Resource: "*"
 
   GeradorConteudoFunction:
     Type: AWS::Serverless::Function
@@ -254,12 +394,15 @@ Resources:
       FunctionName: !Sub ${AWS::StackName}-GeradorConteudo-${Environment}
       CodeUri: src/gerador-conteudo/
       Handler: index.handler
-      Description: Gera respostas usando a Claude API
+      Description: Gera respostas usando modelos DeepSeek e Claude
       MemorySize: 1024
       Timeout: 120
       Environment:
         Variables:
           WHATSAPP_SENDER_FUNCTION: !GetAtt WhatsAppSenderFunction.Arn
+          DEEPSEEK_API_URL: !Ref DeepSeekApiUrl
+          DEEPSEEK_MODEL: !Ref DeepSeekModel
+          USE_CLAUDE_FALLBACK: !Ref UseClaudeFallback
       Events:
         SQSEvent:
           Type: SQS
@@ -280,38 +423,90 @@ Resources:
   LandingPageBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub ${AWS::StackName}-landing-page-${Environment}-${AWS::AccountId}
-      PublicAccessBlockConfiguration:
-        BlockPublicAcls: true
-        BlockPublicPolicy: false
-        IgnorePublicAcls: true
-        RestrictPublicBuckets: false
+      BucketName: !Sub ${AWS::StackName}-landing-page-${Environment}
       WebsiteConfiguration:
         IndexDocument: index.html
         ErrorDocument: error.html
-      OwnershipControls:
-        Rules:
-          - ObjectOwnership: BucketOwnerEnforced
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
 
+  # CloudFront Origin Access Identity para acessar o bucket S3
+  CloudFrontOriginAccessIdentity:
+    Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: !Sub "OAI para ${AWS::StackName} landing page"
+
+  # Política de bucket S3 atualizada para permitir acesso apenas via CloudFront
   LandingPageBucketPolicy:
     Type: AWS::S3::BucketPolicy
     Properties:
       Bucket: !Ref LandingPageBucket
       PolicyDocument:
-        Version: "2012-10-17"
         Statement:
-          - Action:
-              - s3:GetObject
+          - Action: s3:GetObject
             Effect: Allow
-            Principal: "*"
+            Principal:
+              CanonicalUser: !GetAtt CloudFrontOriginAccessIdentity.S3CanonicalUserId
             Resource: !Sub arn:aws:s3:::${LandingPageBucket}/*
+            
+  # Distribuição CloudFront para a landing page
+  LandingPageCloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Origins:
+          - DomainName: !Sub ${LandingPageBucket}.s3.amazonaws.com
+            Id: S3Origin
+            S3OriginConfig:
+              OriginAccessIdentity: !Sub origin-access-identity/cloudfront/${CloudFrontOriginAccessIdentity}
+        Enabled: true
+        Comment: !Sub "Distribuição CloudFront para ${AWS::StackName} landing page"
+        DefaultRootObject: index.html
+        Aliases:
+          - !Ref DomainName
+        DefaultCacheBehavior:
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          TargetOriginId: S3Origin
+          ForwardedValues:
+            QueryString: false
+            Cookies:
+              Forward: none
+          ViewerProtocolPolicy: redirect-to-https
+          MinTTL: 0
+          DefaultTTL: 3600
+          MaxTTL: 86400
+        PriceClass: PriceClass_100
+        ViewerCertificate:
+          AcmCertificateArn: !Ref CertificateArn
+          SslSupportMethod: sni-only
+          MinimumProtocolVersion: TLSv1.2_2019
+        HttpVersion: http2
+        CustomErrorResponses:
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+            
+  # As configurações do domínio personalizado para API Gateway foram removidas
+  # O domínio personalizado será usado apenas para o CloudFront
 
 Outputs:
   # URLs e ARNs importantes
   WebhookApiUrl:
     Description: URL do API Gateway para receber webhooks do WhatsApp
     Value: !Sub https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/webhook
-
+  
+  # Outputs de domínio customizado removidos pois o domínio agora é apenas para CloudFront
+  
   LeadsApiUrl:
     Description: URL do API Gateway para receber leads da landing page
     Value: !Sub https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/leads
@@ -319,6 +514,14 @@ Outputs:
   LandingPageURL:
     Description: URL da landing page
     Value: !GetAtt LandingPageBucket.WebsiteURL
+
+  CloudFrontURL:
+    Description: URL da distribuição CloudFront com domínio personalizado
+    Value: !Sub https://${DomainName}
+    
+  CloudFrontDistributionURL:
+    Description: URL da distribuição CloudFront (domínio AWS)
+    Value: !Sub https://${LandingPageCloudFrontDistribution.DomainName}
 
   UsersTableName:
     Description: Nome da tabela de usuários
@@ -338,4 +541,13 @@ Outputs:
 
   ContentQueueURL:
     Description: URL da fila de geração de conteúdo
-    Value: !Ref ContentQueue 
+    Value: !Ref ContentQueue
+
+  # Configurações de LLMs
+  DeepSeekApiEndpoint:
+    Description: URL para o endpoint Ollama com o modelo DeepSeek
+    Value: !Ref DeepSeekApiUrl
+    
+  ClaudeApiEndpoint:
+    Description: URL para o endpoint da API Claude
+    Value: !Ref ClaudeApiUrl 

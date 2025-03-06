@@ -23,14 +23,39 @@ exports.handler = async (event) => {
             const startTime = new Date().getTime();
             try {
                 const body = JSON.parse(record.body);
-                console.log('Processando mensagem:', body);
+                console.log('Processando mensagem:', JSON.stringify(body));
                 
-                // Identificar tipo de mensagem
                 let result;
-                if (body.type === 'command') {
+                
+                // Identificar tipo de mensagem baseado em suas propriedades
+                // Mensagens de onboarding têm campo 'tipo'
+                if (body.tipo) {
+                    console.log(`Detectada mensagem de tipo especial: ${body.tipo}`);
+                    
+                    if (body.tipo === 'iniciar_onboarding') {
+                        console.log('Processando início de onboarding:', 
+                            body.usuario ? `userId=${body.usuario.userId}, name=${body.usuario.name}` : 'dados incompletos');
+                        result = await processarInicioOnboarding(body);
+                        await publishMetric('OnboardingIniciados', 1);
+                    } 
+                    else if (body.tipo === 'resposta_onboarding') {
+                        console.log(`Processando resposta de onboarding (etapa ${body.etapa})`);
+                        result = await processarRespostaOnboarding(body);
+                        await publishMetric('RespostasOnboardingProcessadas', 1);
+                    }
+                    else {
+                        console.warn(`Tipo de mensagem desconhecido: ${body.tipo}`);
+                        result = { status: 'ignored', message: `Tipo de mensagem não suportado: ${body.tipo}` };
+                    }
+                }
+                // Mensagens normais têm campo 'type'
+                else if (body.type === 'command') {
+                    console.log(`Processando comando: ${body.commandType}`);
                     result = await processCommand(body);
                     await publishMetric('ComandosProcessados', 1);
-                } else {
+                } 
+                else {
+                    console.log('Processando mensagem de usuário padrão');
                     result = await processUserMessage(body);
                     await publishMetric('MensagensUsuarioProcessadas', 1);
                 }
@@ -39,26 +64,26 @@ exports.handler = async (event) => {
                 const processingTime = new Date().getTime() - startTime;
                 await publishMetric('LatenciaProcessamentoMensagem', processingTime, 'Milliseconds');
                 
-                return result;
+                console.log('Processamento concluído com resultado:', JSON.stringify(result));
+                return { status: 'success', result };
             } catch (error) {
                 console.error('Erro ao processar registro:', error);
-                
-                // Registrar falha
-                await publishMetric('FalhasProcessamento', 1);
-                const processingTime = new Date().getTime() - startTime;
-                await publishMetric('LatenciaProcessamentoFalha', processingTime, 'Milliseconds');
+                await publishMetric('ErrosProcessamento', 1);
                 
                 return {
                     status: 'error',
                     error: error.message,
-                    record: record.body
+                    record: {
+                        id: record.messageId,
+                        body: record.body
+                    }
                 };
             }
         })
     );
     
     // Calcular taxa de sucesso
-    const sucessos = processResults.filter(r => r.status !== 'error').length;
+    const sucessos = processResults.filter(r => r.status === 'success').length;
     const taxaSucesso = sucessos / processResults.length;
     await publishMetric('TaxaSucessoProcessamento', taxaSucesso, 'None');
     
@@ -104,7 +129,32 @@ async function publishMetric(metricName, value, unit = 'Count') {
 // Processa comandos específicos
 async function processCommand(data) {
     const startTime = new Date().getTime();
-    const { userId, interactionId, commandType, fullCommand } = data;
+    
+    // Verificar se data existe
+    if (!data) {
+        console.error('Dados do comando são nulos ou indefinidos');
+        return {
+            status: 'error',
+            message: 'Dados do comando inválidos'
+        };
+    }
+    
+    // Extrair propriedades com valores padrão seguros
+    const { 
+        userId = 'unknown', 
+        interactionId = uuidv4(), 
+        commandType = 'unknown', 
+        fullCommand = '' 
+    } = data;
+    
+    // Verificar se userId existe
+    if (!userId || userId === 'unknown') {
+        console.error('ID do usuário não fornecido no comando');
+        return {
+            status: 'error',
+            message: 'ID do usuário não fornecido'
+        };
+    }
     
     // Registrar o tipo de comando recebido
     await publishMetric(`Comando${commandType}`, 1);
@@ -180,9 +230,37 @@ async function processCommand(data) {
 
 // Processa mensagens de usuário (não comandos)
 async function processUserMessage(data) {
-    const { userId, interactionId, content, context } = data;
+    // Verificar se data existe e extrair propriedades com valores padrão seguros
+    if (!data) {
+        console.error('Dados da mensagem são nulos ou indefinidos');
+        return {
+            status: 'error',
+            message: 'Dados da mensagem inválidos'
+        };
+    }
     
-    console.log(`Processando mensagem para usuário ${userId}: "${content.substring(0, 50)}..."`);
+    const { 
+        userId = 'unknown', 
+        interactionId = uuidv4(), 
+        content = '', 
+        context = {} 
+    } = data;
+    
+    // Verificar se userId existe
+    if (!userId || userId === 'unknown') {
+        console.error('ID do usuário não fornecido na mensagem');
+        return {
+            status: 'error',
+            message: 'ID do usuário não fornecido'
+        };
+    }
+    
+    // Verificar se content existe e é uma string antes de usar substring
+    const contentPreview = typeof content === 'string' && content ? 
+        `"${content.substring(0, 50)}${content.length > 50 ? '...' : ''}"` : 
+        '[Sem conteúdo de texto]';
+    
+    console.log(`Processando mensagem para usuário ${userId}: ${contentPreview}`);
     
     // Buscar informações do usuário
     const user = await getUser(userId);
@@ -195,8 +273,8 @@ async function processUserMessage(data) {
         };
     }
     
-    // Verificar se está em onboarding
-    if (context.stage === 'onboarding') {
+    // Verificar se context e context.stage existem
+    if (context && context.stage === 'onboarding') {
         return await processOnboardingMessage(user, interactionId, content, context);
     }
     
@@ -426,21 +504,6 @@ async function processOnboardingMessage(user, interactionId, content, context) {
 
 // Manipula etapa inicial do onboarding
 async function handleOnboardingWelcome(user, interactionId) {
-    const welcomeMessage = `Olá novamente, ${user.name}! 👋
-    
-Estou muito feliz em ter você no *Radar de Tendências em Marketing Digital*.
-    
-Vamos personalizar sua experiência com algumas perguntas rápidas.
-
-*Primeira pergunta:* Qual é o principal objetivo da sua estratégia de marketing digital atualmente?
-    
-a) Aumentar tráfego para o site
-b) Gerar mais leads qualificados
-c) Melhorar engajamento nas redes sociais
-d) Aumentar conversões e vendas
-e) Aperfeiçoar o branding e posicionamento
-f) Outro (descreva brevemente)`;
-    
     // Criar interação de saída
     const outputInteractionId = await createOutputInteraction(
         user.userId, 
@@ -452,11 +515,26 @@ f) Outro (descreva brevemente)`;
     // Atualizar a etapa de onboarding
     await updateUserOnboardingStep(user.userId, 'profile_question');
     
-    // Enviar mensagem de boas-vindas
+    // Enviar mensagem de boas-vindas usando template
     await sendWhatsAppMessage(
         user.phoneNumber,
-        welcomeMessage,
-        { interactionId: outputInteractionId, userId: user.userId }
+        null,
+        { interactionId: outputInteractionId, userId: user.userId },
+        {
+            name: "onboarding_inicio_antena",
+            language: "pt_BR",
+            components: [
+                {
+                    type: "body",
+                    parameters: [
+                        {
+                            type: "text",
+                            text: user.name || "Usuário"
+                        }
+                    ]
+                }
+            ]
+        }
     );
     
     return {
@@ -603,19 +681,6 @@ async function handleOnboardingChallenges(user, interactionId, content) {
 
 // Finaliza o processo de onboarding
 async function finalizeOnboarding(user, interactionId) {
-    const completeMessage = `🎉 *Prontinho, ${user.name}!*
-    
-Seu perfil está configurado e começaremos a enviar conteúdos personalizados em breve.
-    
-*Comandos que você pode usar:*
-    
-📊 */tendencia [tópico]* - Receba tendências específicas
-🛠️ */ferramenta [tópico]* - Descubra ferramentas úteis
-📈 */case [tópico]* - Veja casos de sucesso
-❓ */ajuda* - Para mais informações
-
-Estamos muito felizes em tê-lo(a) conosco! Se tiver dúvidas, é só perguntar.`;
-    
     // Atualizar status de onboarding
     await dynamoDB.update({
         TableName: USERS_TABLE,
@@ -626,11 +691,26 @@ Estamos muito felizes em tê-lo(a) conosco! Se tiver dúvidas, é só perguntar.
         }
     }).promise();
     
-    // Enviar mensagem final de onboarding
+    // Enviar mensagem final de onboarding usando template
     await sendWhatsAppMessage(
         user.phoneNumber,
-        completeMessage,
-        { interactionId, userId: user.userId }
+        null,
+        { interactionId, userId: user.userId },
+        {
+            name: "finalizacao_onboarding_antena",
+            language: "pt_BR",
+            components: [
+                {
+                    type: "body",
+                    parameters: [
+                        {
+                            type: "text",
+                            text: user.name || "Usuário"
+                        }
+                    ]
+                }
+            ]
+        }
     );
     
     return {
@@ -682,14 +762,15 @@ async function createOutputInteraction(userId, content, contentType, replyTo) {
 }
 
 // Envia mensagem via WhatsApp
-async function sendWhatsAppMessage(phoneNumber, message, metadata) {
+async function sendWhatsAppMessage(phoneNumber, message, metadata, template) {
     await lambda.invoke({
         FunctionName: WHATSAPP_SENDER_LAMBDA,
         InvocationType: 'Event',
         Payload: JSON.stringify({
             phoneNumber,
             message,
-            metadata
+            metadata,
+            template
         })
     }).promise();
 }
@@ -776,4 +857,125 @@ async function updateUserChallenges(userId, challengesInput) {
             ':challenges': [challengesInput]
         }
     }).promise();
-} 
+}
+
+// Ajuste na função que processa mensagens
+async function processarMensagem(mensagem) {
+    console.log('Processando mensagem:', JSON.stringify(mensagem));
+    
+    // Verificar se é uma mensagem de início de onboarding
+    if (mensagem.tipo === 'iniciar_onboarding') {
+        console.log('Iniciando fluxo de onboarding para usuário:', mensagem.usuario.telefone);
+        return await processarInicioOnboarding(mensagem);
+    }
+    
+    // Verificar se é uma resposta a uma pergunta de onboarding
+    if (mensagem.tipo === 'resposta_onboarding') {
+        console.log('Processando resposta de onboarding, etapa:', mensagem.etapa);
+        return await processarRespostaOnboarding(mensagem);
+    }
+    
+    // Outros tipos de mensagens...
+    // ... existing code ...
+}
+
+// Nova função para processar início de onboarding
+async function processarInicioOnboarding(mensagem) {
+    if (!mensagem || !mensagem.usuario) {
+        console.error('Mensagem de onboarding inválida ou sem dados de usuário');
+        return {
+            status: 'error',
+            message: 'Dados de onboarding inválidos'
+        };
+    }
+    
+    const usuario = mensagem.usuario;
+    
+    // Verificar se userId está presente
+    if (!usuario.userId) {
+        console.error('ID do usuário não fornecido na mensagem de onboarding');
+        return {
+            status: 'error',
+            message: 'ID do usuário não fornecido'
+        };
+    }
+    
+    console.log(`Processando início de onboarding para usuário ${usuario.userId}`);
+    
+    try {
+        // Obter a primeira pergunta do onboarding
+        const pergunta = obterPerguntaOnboarding(0);
+        
+        // Atualizar estado do usuário no DynamoDB
+        await atualizarEstadoOnboarding(usuario.userId, 0);
+        
+        // Enviar mensagem de boas-vindas via WhatsApp (se o número estiver disponível)
+        if (usuario.phoneNumber) {
+            await sendWhatsAppMessage(
+                usuario.phoneNumber,
+                `Olá ${usuario.name || 'visitante'}, bem-vindo ao Radar de Tendências! Vamos personalizar sua experiência. ${pergunta}`,
+                { userId: usuario.userId }
+            );
+            
+            console.log(`Mensagem de onboarding enviada para ${usuario.phoneNumber}`);
+            return {
+                status: 'success',
+                message: 'Onboarding iniciado com sucesso'
+            };
+        } else {
+            console.warn('Usuário sem número de telefone, não foi possível iniciar onboarding via WhatsApp');
+            return {
+                status: 'warning',
+                message: 'Usuário sem telefone para enviar mensagem'
+            };
+        }
+    } catch (error) {
+        console.error('Erro ao processar início de onboarding:', error);
+        return {
+            status: 'error',
+            message: `Erro: ${error.message}`
+        };
+    }
+}
+
+// Função para obter perguntas de onboarding
+function obterPerguntaOnboarding(etapa) {
+    const perguntas = [
+        "Qual é sua área de atuação em marketing digital? (ex: Conteúdo, SEO, Mídia Paga, Redes Sociais)",
+        "Quais são seus principais objetivos profissionais para os próximos meses?",
+        "Quais ferramentas de marketing digital você já utiliza?",
+        "Que tipo de informações e tendências mais te interessam?",
+        "Prefere receber conteúdos mais técnicos ou mais estratégicos?",
+        "Com que frequência gostaria de receber nossas dicas e recomendações?"
+    ];
+    
+    return perguntas[etapa] || "Obrigado por compartilhar suas informações!";
+}
+
+// Atualizar estado do usuário no DynamoDB
+async function atualizarEstadoOnboarding(userId, etapa) {
+    console.log(`Atualizando estado de onboarding para usuário ${userId}, etapa ${etapa}`);
+    
+    try {
+        const params = {
+            TableName: USERS_TABLE,
+            Key: { userId: userId },
+            UpdateExpression: "set profile.onboardingStep = :etapa, profile.onboardingStatus = :status, lastActive = :data",
+            ExpressionAttributeValues: {
+                ":etapa": etapa,
+                ":status": "in_progress",
+                ":data": new Date().toISOString()
+            },
+            ReturnValues: "UPDATED_NEW"
+        };
+        
+        const result = await dynamoDB.update(params).promise();
+        console.log('Atualização de estado concluída:', result);
+        return result;
+    } catch (error) {
+        console.error('Erro ao atualizar estado de onboarding:', error);
+        throw error; // Propagar o erro para tratamento adequado
+    }
+}
+
+// ... existing code ... 

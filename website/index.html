@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Radar de Tendências em Marketing Digital</title>
+    <title>Antena - Captando o futuro do Marketing Digital</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
-            --primary-color: #0062cc;
+            --primary-color: #3498db; /* Azul mais vibrante para representar a transmissão de sinal */
             --secondary-color: #6c757d;
-            --accent-color: #28a745;
+            --accent-color: #2ecc71; /* Verde para ações */
             --light-color: #f8f9fa;
             --dark-color: #212529;
         }
@@ -22,7 +22,7 @@
         }
         
         .hero-section {
-            background: linear-gradient(135deg, #0062cc 0%, #0097b2 100%);
+            background: linear-gradient(135deg, #3498db 0%, #9b59b6 100%); /* Gradiente representando ondas e sinais */
             color: white;
             padding: 100px 0 80px;
             position: relative;
@@ -170,7 +170,7 @@
         }
         
         .cta-section {
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            background: linear-gradient(135deg, #2ecc71 0%, #1abc9c 100%);
             color: white;
             padding: 80px 0;
             text-align: center;
@@ -230,6 +230,38 @@
             margin-bottom: 8px;
         }
         
+        /* Adicionando animação de onda para representar sinais da antena */
+        .signal-wave {
+            position: absolute;
+            top: 10%;
+            right: 10%;
+            width: 80px;
+            height: 80px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            opacity: 0;
+            animation: wave 4s infinite;
+        }
+        
+        .signal-wave:nth-child(2) {
+            animation-delay: 1s;
+        }
+        
+        .signal-wave:nth-child(3) {
+            animation-delay: 2s;
+        }
+        
+        @keyframes wave {
+            0% {
+                transform: scale(0);
+                opacity: 0.8;
+            }
+            100% {
+                transform: scale(3);
+                opacity: 0;
+            }
+        }
+        
         @media (max-width: 767px) {
             .hero-title {
                 font-size: 2.5rem;
@@ -248,15 +280,68 @@
 <body>
     <!-- Hero Section -->
     <section class="hero-section">
+        <div class="signal-wave"></div>
+        <div class="signal-wave"></div>
+        <div class="signal-wave"></div>
         <div class="container hero-content">
             <div class="row align-items-center">
                 <div class="col-lg-7">
-                    <h1 class="hero-title">Radar de Tendências em Marketing Digital</h1>
-                    <p class="hero-subtitle">Descubra ferramentas, estratégias e insights para impulsionar seus resultados de marketing.</p>
-                    <a href="#cadastro" class="btn btn-light btn-lg">Comece agora</a>
+                    <h1 class="hero-title">Antena</h1>
+                    <p class="hero-subtitle">Sempre antenado às tendências que importam, sem o ruído que distrai. Marketing digital essencial, no seu estilo, direto no WhatsApp.</p>
+                    <a href="#cadastro" class="btn btn-light btn-lg">Fique antenado agora</a>
                 </div>
                 <div class="col-lg-5 d-none d-lg-block">
-                    <img src="https://images.unsplash.com/photo-1617464985170-8156793235aa?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=774&q=80" alt="Marketing Digital" class="img-fluid rounded-circle" style="max-width: 400px; border: 5px solid rgba(255,255,255,0.3);">
+                    <svg viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg" class="img-fluid rounded-circle" style="max-width: 400px; border: 5px solid rgba(255,255,255,0.3); background-color: rgba(255, 255, 255, 0.1);">
+                        <!-- Fundo circular com gradiente -->
+                        <circle cx="250" cy="250" r="240" fill="url(#gradBackground)" />
+                        
+                        <!-- Ondas de sinal circular -->
+                        <circle cx="250" cy="250" r="60" stroke="rgba(255,255,255,0.7)" stroke-width="3" fill="none" />
+                        <circle cx="250" cy="250" r="100" stroke="rgba(255,255,255,0.5)" stroke-width="2" fill="none" />
+                        <circle cx="250" cy="250" r="140" stroke="rgba(255,255,255,0.3)" stroke-width="2" fill="none" />
+                        <circle cx="250" cy="250" r="180" stroke="rgba(255,255,255,0.2)" stroke-width="1" fill="none" />
+                        
+                        <!-- Antena central -->
+                        <path d="M250,250 L250,130" stroke="#ffffff" stroke-width="6" />
+                        <circle cx="250" cy="250" r="25" fill="#ffffff" />
+                        <path d="M250,130 L230,90 M250,130 L270,90" stroke="#ffffff" stroke-width="4" />
+                        
+                        <!-- Elementos de dados/gráficos -->
+                        <rect x="180" y="290" width="140" height="80" rx="10" fill="rgba(255,255,255,0.9)" />
+                        <line x1="200" y1="315" x2="300" y2="315" stroke="#3498db" stroke-width="3" />
+                        <line x1="200" y1="335" x2="270" y2="335" stroke="#2ecc71" stroke-width="3" />
+                        <line x1="200" y1="355" x2="290" y2="355" stroke="#9b59b6" stroke-width="3" />
+                        
+                        <!-- Elementos de marketing digital flutuantes -->
+                        <circle cx="160" cy="180" r="15" fill="#3498db" />
+                        <circle cx="340" cy="190" r="12" fill="#2ecc71" />
+                        <circle cx="180" cy="150" r="10" fill="#9b59b6" />
+                        <circle cx="310" cy="160" r="8" fill="#e74c3c" />
+                        
+                        <!-- Linhas conectando elementos aos dados -->
+                        <line x1="160" y1="180" x2="200" y2="315" stroke="#3498db" stroke-width="1" stroke-dasharray="4" />
+                        <line x1="340" y1="190" x2="270" y2="335" stroke="#2ecc71" stroke-width="1" stroke-dasharray="4" />
+                        <line x1="180" y1="150" x2="290" y2="355" stroke="#9b59b6" stroke-width="1" stroke-dasharray="4" />
+                        
+                        <!-- Texto indicando marketing digital -->
+                        <text x="250" y="380" text-anchor="middle" fill="#3498db" font-family="Arial" font-weight="bold" font-size="12">INSIGHTS DE MARKETING</text>
+                        
+                        <!-- Ícones de mídia social/marketing -->
+                        <g transform="translate(210, 230) scale(0.03)">
+                            <path d="M500,1000 L1000,500 L500,0 L0,500 L500,1000Z" fill="#e74c3c" />
+                        </g>
+                        <g transform="translate(270, 230) scale(0.03)">
+                            <circle cx="500" cy="500" r="500" fill="#3498db" />
+                        </g>
+                        
+                        <!-- Definições de gradientes -->
+                        <defs>
+                            <linearGradient id="gradBackground" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#3498db" />
+                                <stop offset="100%" stop-color="#9b59b6" />
+                            </linearGradient>
+                        </defs>
+                    </svg>
                 </div>
             </div>
         </div>
@@ -265,15 +350,15 @@
     <!-- Features Section -->
     <section class="features-section py-5">
         <div class="container py-5">
-            <h2 class="section-title">Descubra o que o Radar pode fazer por você</h2>
+            <h2 class="section-title">Capte apenas o sinal que importa</h2>
             <div class="row mb-4">
                 <div class="col-md-4 mb-4">
                     <div class="feature-card">
                         <div class="feature-icon">
-                            <i class="fas fa-chart-line"></i>
+                            <i class="fas fa-satellite-dish"></i>
                         </div>
-                        <h3 class="feature-title">Tendências Emergentes</h3>
-                        <p>Receba relatórios personalizados sobre as últimas tendências em marketing digital diretamente no seu WhatsApp, mantendo-se sempre à frente da concorrência.</p>
+                        <h3 class="feature-title">Captação de Tendências</h3>
+                        <p>Receba insights personalizados sobre as últimas tendências em marketing digital diretamente no seu WhatsApp, sem ruídos ou distrações.</p>
                     </div>
                 </div>
                 <div class="col-md-4 mb-4">
@@ -281,8 +366,8 @@
                         <div class="feature-icon">
                             <i class="fas fa-tools"></i>
                         </div>
-                        <h3 class="feature-title">Ferramentas Inovadoras</h3>
-                        <p>Descubra as melhores ferramentas para cada desafio de marketing, com recomendações personalizadas baseadas no seu perfil e objetivos de negócio.</p>
+                        <h3 class="feature-title">Ferramentas Essenciais</h3>
+                        <p>Descubra apenas as ferramentas que realmente farão diferença para seu negócio, com recomendações baseadas no seu perfil e objetivos.</p>
                     </div>
                 </div>
                 <div class="col-md-4 mb-4">
@@ -291,7 +376,7 @@
                             <i class="fas fa-trophy"></i>
                         </div>
                         <h3 class="feature-title">Cases de Sucesso</h3>
-                        <p>Inspire-se com histórias de sucesso reais e aprenda estratégias comprovadas que geraram resultados excepcionais para empresas como a sua.</p>
+                        <p>Inspire-se com histórias reais que funcionaram e aplique estratégias comprovadas que geraram resultados excepcionais em negócios como o seu.</p>
                     </div>
                 </div>
             </div>
@@ -299,10 +384,10 @@
                 <div class="col-md-6 mb-4">
                     <div class="feature-card">
                         <div class="feature-icon">
-                            <i class="fas fa-users"></i>
+                            <i class="fas fa-broadcast-tower"></i>
                         </div>
-                        <h3 class="feature-title">Comunidade Exclusiva</h3>
-                        <p>Faça parte de uma rede de profissionais de marketing digital, compartilhando experiências e estabelecendo conexões valiosas para sua carreira e negócio.</p>
+                        <h3 class="feature-title">Antenas Humanas</h3>
+                        <p>Faça parte de uma rede de profissionais antenados que estão sempre à frente das tendências, compartilhando experiências e estabelecendo conexões valiosas.</p>
                     </div>
                 </div>
                 <div class="col-md-6 mb-4">
@@ -310,8 +395,8 @@
                         <div class="feature-icon">
                             <i class="fas fa-graduation-cap"></i>
                         </div>
-                        <h3 class="feature-title">Aprendizado Contínuo</h3>
-                        <p>Desenvolva suas habilidades com conteúdos educativos sobre as últimas técnicas e estratégias de marketing digital, sempre ao seu alcance via WhatsApp.</p>
+                        <h3 class="feature-title">Sintonização Contínua</h3>
+                        <p>Mantenha-se constantemente sintonizado com as novidades do mercado, aprendendo sobre as técnicas e estratégias mais eficazes via WhatsApp.</p>
                     </div>
                 </div>
             </div>
@@ -326,13 +411,13 @@
                 <div class="col-lg-8">
                     <div class="step-card">
                         <span class="step-number">1</span>
-                        <span class="step-title fw-bold">Faça seu cadastro</span>
-                        <p class="mt-3">Preencha o formulário com seus dados e preferências para começarmos a personalizar sua experiência.</p>
+                        <span class="step-title fw-bold">Conecte sua antena</span>
+                        <p class="mt-3">Cadastre-se com seus dados e preferências para começarmos a sintonizar os sinais mais relevantes para você.</p>
                     </div>
                     <div class="step-card">
                         <span class="step-number">2</span>
                         <span class="step-title fw-bold">Receba o acesso no WhatsApp</span>
-                        <p class="mt-3">Após o cadastro, você receberá uma mensagem de boas-vindas no WhatsApp com instruções para começar.</p>
+                        <p class="mt-3">Após o cadastro, você receberá uma mensagem de boas-vindas no WhatsApp com instruções para começar a captar os sinais.</p>
                     </div>
                     <div class="step-card">
                         <span class="step-number">3</span>
@@ -341,8 +426,8 @@
                     </div>
                     <div class="step-card">
                         <span class="step-number">4</span>
-                        <span class="step-title fw-bold">Receba insights personalizados</span>
-                        <p class="mt-3">Nossa IA analisa seu perfil e interações para entregar os conteúdos mais relevantes para seus objetivos de marketing.</p>
+                        <span class="step-title fw-bold">Receba apenas o que importa</span>
+                        <p class="mt-3">Nossa IA filtra o ruído e entrega apenas os sinais que realmente importam para seus objetivos de marketing.</p>
                     </div>
                 </div>
             </div>
@@ -352,12 +437,12 @@
     <!-- Testimonials Section -->
     <section class="testimonials-section py-5">
         <div class="container py-5">
-            <h2 class="section-title">O que nossos usuários dizem</h2>
+            <h2 class="section-title">O que dizem os antenados</h2>
             <div class="row">
                 <div class="col-md-4">
                     <div class="testimonial-card">
                         <div class="testimonial-content">
-                            "O Radar de Tendências revolucionou minha estratégia de marketing. Recebo insights valiosos direto no meu WhatsApp e já implementei várias ferramentas recomendadas com resultados fantásticos."
+                            "A Antena revolucionou minha estratégia de marketing. Estou sempre à frente da concorrência pois recebo os sinais certos no momento certo. As recomendações de ferramentas já trouxeram resultados incríveis."
                         </div>
                         <div class="testimonial-author">Ana Paula Silva</div>
                         <div class="testimonial-role">Gerente de Marketing, E-commerce</div>
@@ -366,7 +451,7 @@
                 <div class="col-md-4">
                     <div class="testimonial-card">
                         <div class="testimonial-content">
-                            "Como freelancer, preciso estar sempre atualizado. O Radar me proporciona acesso rápido às últimas tendências e ferramentas, economizando meu tempo de pesquisa e me mantendo competitivo."
+                            "Como freelancer, preciso estar sempre antenado. Este serviço é como ter uma antena particular captando exatamente o que preciso saber, economizando meu tempo de pesquisa e mantendo-me competitivo."
                         </div>
                         <div class="testimonial-author">Carlos Mendes</div>
                         <div class="testimonial-role">Consultor de Marketing Digital</div>
@@ -375,7 +460,7 @@
                 <div class="col-md-4">
                     <div class="testimonial-card">
                         <div class="testimonial-content">
-                            "Implementamos uma estratégia baseada em um case compartilhado pelo Radar e aumentamos nossa conversão em 32%. O acesso via WhatsApp torna tudo muito prático e ágil."
+                            "Implementamos uma estratégia baseada em um case compartilhado pela Antena e aumentamos nossa conversão em 32%. O acesso via WhatsApp é simples e direto, sem ruídos ou distrações."
                         </div>
                         <div class="testimonial-author">Fernanda Costa</div>
                         <div class="testimonial-role">Diretora de Marketing, Startup SaaS</div>
@@ -393,25 +478,25 @@
                 <div class="col-lg-8">
                     <div class="faq-item">
                         <div class="faq-question" onclick="toggleFAQ(this)">
-                            <span>Quanto custa para usar o Radar de Tendências?</span>
+                            <span>Quanto custa para estar antenado?</span>
                             <i class="fas fa-plus"></i>
                         </div>
                         <div class="faq-answer">
-                            O Radar de Tendências está atualmente em fase beta e é gratuito para uso. Futuramente, teremos planos pagos com recursos avançados, mas manteremos sempre uma versão gratuita com funcionalidades essenciais.
+                            A Antena está atualmente em fase beta e é gratuita para uso. Futuramente, teremos planos pagos com recursos avançados, mas manteremos sempre uma versão gratuita com funcionalidades essenciais.
                         </div>
                     </div>
                     <div class="faq-item">
                         <div class="faq-question" onclick="toggleFAQ(this)">
-                            <span>Com que frequência recebo as informações?</span>
+                            <span>Com que frequência recebo os sinais?</span>
                             <i class="fas fa-plus"></i>
                         </div>
                         <div class="faq-answer">
-                            Você pode configurar a frequência de recebimento das informações (diária, semanal ou mensal). Além disso, você pode solicitar informações específicas a qualquer momento usando os comandos disponíveis.
+                            Você pode configurar a frequência de recebimento dos sinais (diária, semanal ou mensal). Além disso, você pode solicitar informações específicas a qualquer momento usando os comandos disponíveis.
                         </div>
                     </div>
                     <div class="faq-item">
                         <div class="faq-question" onclick="toggleFAQ(this)">
-                            <span>É possível cancelar minha inscrição quando quiser?</span>
+                            <span>É possível desconectar minha antena quando quiser?</span>
                             <i class="fas fa-plus"></i>
                         </div>
                         <div class="faq-answer">
@@ -433,7 +518,7 @@
                             <i class="fas fa-plus"></i>
                         </div>
                         <div class="faq-answer">
-                            Utilizamos seus dados apenas para personalizar sua experiência e melhorar nosso serviço. Não compartilhamos suas informações com terceiros para fins de marketing. Para mais detalhes, consulte nossa Política de Privacidade.
+                            Utilizamos seus dados apenas para sintonizar os sinais mais relevantes para você e melhorar nosso serviço. Não compartilhamos suas informações com terceiros para fins de marketing. Para mais detalhes, consulte nossa Política de Privacidade.
                         </div>
                     </div>
                 </div>
@@ -446,8 +531,8 @@
         <div class="container">
             <div class="row justify-content-center">
                 <div class="col-lg-8 text-center">
-                    <h2 class="mb-4">Pronto para transformar seu marketing?</h2>
-                    <p class="lead mb-5">Cadastre-se agora e comece a receber insights valiosos diretamente no seu WhatsApp.</p>
+                    <h2 class="mb-4">Pronto para sintonizar o futuro do marketing?</h2>
+                    <p class="lead mb-5">Conecte sua antena agora e comece a captar os sinais que realmente importam para o seu sucesso.</p>
                     
                     <div class="card">
                         <div class="card-body">
@@ -496,13 +581,13 @@
                                         Concordo com a <a href="#" class="text-primary">Política de Privacidade</a> e em receber comunicações via WhatsApp
                                     </label>
                                 </div>
-                                <button type="submit" class="btn btn-cta btn-lg">Receber acesso</button>
+                                <button type="submit" class="btn btn-cta btn-lg">Conectar minha antena</button>
                             </form>
                             <div id="formSuccess" class="alert alert-success mt-3" style="display: none;">
-                                Cadastro realizado com sucesso! Em breve você receberá uma mensagem no WhatsApp.
+                                Antena conectada com sucesso! Em breve você receberá uma mensagem no WhatsApp.
                             </div>
                             <div id="formError" class="alert alert-danger mt-3" style="display: none;">
-                                Ocorreu um erro ao processar seu cadastro. Por favor, tente novamente.
+                                Ocorreu um erro ao conectar sua antena. Por favor, tente novamente.
                             </div>
                         </div>
                     </div>
@@ -516,8 +601,8 @@
         <div class="container">
             <div class="row">
                 <div class="col-md-4 mb-4">
-                    <h5 class="mb-4">Radar de Tendências</h5>
-                    <p>Mantenha-se à frente no mundo do marketing digital com insights personalizados e atualizados sobre tendências, ferramentas e estratégias.</p>
+                    <h5 class="mb-4">Antena</h5>
+                    <p>Mantenha-se sintonizado com o que realmente faz diferença no mundo do marketing digital. Sua antena pessoal para o futuro, direto no WhatsApp.</p>
                     <div class="social-links mt-4">
                         <a href="#"><i class="fab fa-facebook-f"></i></a>
                         <a href="#"><i class="fab fa-twitter"></i></a>
@@ -529,7 +614,7 @@
                     <h5 class="mb-4">Links</h5>
                     <ul class="list-unstyled footer-links">
                         <li class="mb-2"><a href="#">Início</a></li>
-                        <li class="mb-2"><a href="#cadastro">Cadastro</a></li>
+                        <li class="mb-2"><a href="#cadastro">Conecte-se</a></li>
                         <li class="mb-2"><a href="#">Sobre nós</a></li>
                         <li class="mb-2"><a href="#">Blog</a></li>
                         <li class="mb-2"><a href="#">Contato</a></li>
@@ -546,7 +631,7 @@
                 <div class="col-md-4 mb-4">
                     <h5 class="mb-4">Contato</h5>
                     <ul class="list-unstyled">
-                        <li class="mb-2"><i class="fas fa-envelope me-2"></i> contato@radardetendencias.com</li>
+                        <li class="mb-2"><i class="fas fa-envelope me-2"></i> contato@antenada.com.br</li>
                         <li class="mb-2"><i class="fas fa-phone me-2"></i> (11) 98765-4321</li>
                         <li class="mb-2"><i class="fas fa-map-marker-alt me-2"></i> São Paulo, SP - Brasil</li>
                     </ul>
@@ -555,7 +640,7 @@
             <hr class="mt-4 mb-4" style="background-color: rgba(255,255,255,0.1);">
             <div class="row">
                 <div class="col-md-12 text-center">
-                    <p class="mb-0">&copy; 2023 Radar de Tendências em Marketing Digital. Todos os direitos reservados.</p>
+                    <p class="mb-0">&copy; 2023 Antena. Todos os direitos reservados.</p>
                 </div>
             </div>
         </div>

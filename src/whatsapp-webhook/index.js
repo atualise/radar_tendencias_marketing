@@ -265,10 +265,13 @@ async function createInteraction(userId, content, timestamp) {
     await dynamoDB.update({
         TableName: USERS_TABLE,
         Key: { userId },
-        UpdateExpression: 'SET metrics.totalInteractions = metrics.totalInteractions + :inc, metrics.lastInteraction = :time',
+        UpdateExpression: 'SET #metrics.totalInteractions = #metrics.totalInteractions + :inc, #metrics.lastInteraction = :time',
         ExpressionAttributeValues: {
             ':inc': 1,
             ':time': timestamp || new Date().toISOString()
+        },
+        ExpressionAttributeNames: {
+            '#metrics': 'metrics'
         }
     }).promise();
     

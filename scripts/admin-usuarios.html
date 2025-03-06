@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Painel Admin - Radar de Tendências</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
     <style>
         body {
             padding: 20px;
@@ -206,10 +207,26 @@
                             <p><strong>Função:</strong> ${user.role || 'N/A'}</p>
                             <p><strong>Cadastrado em:</strong> ${user.createdAt ? new Date(user.createdAt).toLocaleString() : 'N/A'}</p>
                         </div>
+                        <div class="card-footer">
+                            <button class="btn btn-sm btn-danger delete-user" data-user-id="${user.id}" data-user-name="${user.name || 'este usuário'}">
+                                <i class="bi bi-trash"></i> Excluir usuário
+                            </button>
+                        </div>
                     </div>
                 `;
                 
                 usersContainerElement.appendChild(userCard);
+            });
+            
+            // Adicionar event listeners para os botões de exclusão
+            document.querySelectorAll('.delete-user').forEach(button => {
+                button.addEventListener('click', function() {
+                    const userId = this.getAttribute('data-user-id');
+                    const userName = this.getAttribute('data-user-name');
+                    if (confirm(`Tem certeza que deseja excluir ${userName}? Esta ação não pode ser desfeita.`)) {
+                        deleteUser(userId);
+                    }
+                });
             });
             
             hideLoading();
@@ -256,6 +273,44 @@
         refreshBtnElement.addEventListener('click', function() {
             loadUsers();
         });
+        
+        // Função para excluir usuário
+        async function deleteUser(userId) {
+            if (!tableName || !userId) {
+                setErrorMessage('ID do usuário ou nome da tabela não informados.', 'warning');
+                return;
+            }
+            
+            showLoading();
+            
+            try {
+                // Configurar AWS SDK
+                AWS.config.region = awsRegion;
+                AWS.config.credentials = new AWS.CognitoIdentityCredentials({
+                    IdentityPoolId: 'us-east-1:1f391842-48fd-487a-b54b-bc42b11d19b1'
+                });
+                
+                const dynamodb = new AWS.DynamoDB.DocumentClient();
+                
+                // Parâmetros para exclusão do item
+                const params = {
+                    TableName: tableName,
+                    Key: {
+                        id: userId
+                    }
+                };
+                
+                await dynamodb.delete(params).promise();
+                
+                // Recarregar a lista de usuários após a exclusão
+                setErrorMessage('Usuário excluído com sucesso!', 'success');
+                await loadUsers();
+                
+            } catch (error) {
+                console.error('Erro ao excluir usuário:', error);
+                setErrorMessage(`Erro ao excluir usuário: ${error.message}`, 'danger');
+            }
+        }
     </script>
 </body>
 </html> 

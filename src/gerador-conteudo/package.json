@@ -1,7 +1,7 @@
 {
   "name": "gerador-conteudo-function",
   "version": "1.0.0",
-  "description": "Função para gerar conteúdo utilizando a Claude API",
+  "description": "Função para gerar conteúdo utilizando modelos DeepSeek e Claude",
   "main": "index.js",
   "dependencies": {
     "aws-sdk": "^2.1413.0",

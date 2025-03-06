@@ -240,8 +240,159 @@ Para acesso direto via AWS Console:
 3. Navegue até "Tabelas" e selecione a tabela de usuários
 4. Use "Explorar itens da tabela" para visualizar e filtrar registros
 
+## Templates WhatsApp e API v21.0
+
+O sistema utiliza templates para enviar mensagens pelo WhatsApp Business Platform. Foram implementadas as seguintes modificações para compatibilidade com a API v21.0:
+
+### Estrutura de Templates Atualizada
+
+A estrutura dos templates foi atualizada para seguir o formato atual da API v21.0 do WhatsApp:
+
+- Remoção do campo `parameters` dos componentes BODY
+- Adição do campo `example` com `body_text` contendo exemplos de valores para variáveis
+- Redução do tamanho dos footers para respeitar o limite de 60 caracteres
+
+### Comandos para Gerenciar Templates
+
+#### Atualização completa do sistema
+```bash
+# Atualiza templates e faz deploy dos recursos
+./scripts/atualizar-sistema-whatsapp.sh
+```
+
+#### Apenas atualizar templates
+```bash
+# Lista todos os templates existentes
+./scripts/atualizar-templates-whatsapp.sh list
+
+# Cria um template específico
+./scripts/atualizar-templates-whatsapp.sh create <nome_do_template>
+
+# Depura um template para verificar problemas
+./scripts/atualizar-templates-whatsapp.sh debug <nome_do_template>
+
+# Cria todos os templates
+./scripts/atualizar-templates-whatsapp.sh all
+```
+
+### Arquivo .env para Templates WhatsApp
+
+O arquivo `.env` deve conter as seguintes configurações para os templates do WhatsApp:
+
+```
+# WhatsApp Business API
+WHATSAPP_API_TOKEN=seu_token_aqui
+WHATSAPP_API_URL=https://graph.facebook.com/v21.0/
+WHATSAPP_PHONE_NUMBER_ID=seu_phone_number_id
+WHATSAPP_BUSINESS_ACCOUNT_ID=seu_business_account_id
+
+# Webhook
+WEBHOOK_VERIFY_TOKEN=seu_token_de_verificacao
+```
+
+### CloudFormation Capabilities
+
+Durante o deploy, o sistema usa as seguintes capacidades do CloudFormation:
+- `CAPABILITY_IAM`: Para criar/modificar recursos IAM
+- `CAPABILITY_AUTO_EXPAND`: Para expandir transformações na pilha
+
+## Verificação de Logs e Solução de Problemas
+
+### Verificação de Logs no CloudWatch
+
+#### Acesso via Console AWS
+1. Acesse o [Console AWS CloudWatch](https://console.aws.amazon.com/cloudwatch/)
+2. Navegue até "Grupos de logs" (Log Groups) no menu lateral
+3. Procure pelos grupos de logs que começam com `/aws/lambda/antena-app-`
+4. Clique no grupo de logs correspondente à função (ex: WhatsAppSender)
+5. Visualize os logs mais recentes para encontrar erros
+
+#### Comandos AWS CLI
+
+Lista os grupos de logs disponíveis:
+```bash
+aws logs describe-log-groups --log-group-name-prefix /aws/lambda/antena-app
+```
+
+Visualiza os logs mais recentes de uma função específica:
+```bash
+# Obter o stream de logs mais recente
+LATEST_STREAM=$(aws logs describe-log-streams \
+  --log-group-name /aws/lambda/antena-app-WhatsAppSender \
+  --order-by LastEventTime \
+  --descending \
+  --limit 1 \
+  --query 'logStreams[0].logStreamName' \
+  --output text)
+
+# Visualizar os eventos do stream
+aws logs get-log-events \
+  --log-group-name /aws/lambda/antena-app-WhatsAppSender \
+  --log-stream-name "$LATEST_STREAM"
+```
+
+Filtra logs por termo específico (ex: "error"):
+```bash
+aws logs filter-log-events \
+  --log-group-name /aws/lambda/antena-app-WhatsAppSender \
+  --filter-pattern "error" \
+  --query "events[*].message"
+```
+
+### Erros Comuns da API do WhatsApp
+
+Ao verificar os logs, procure por mensagens como:
+
+1. **Erro de autenticação**:
+   ```
+   Authentication failed with code 401: Bearer token invalid
+   ```
+   *Solução*: Gere um novo token de acesso no Facebook Developer Portal.
+
+2. **Erro de número de telefone**:
+   ```
+   Error: Phone number not found or not authorized
+   ```
+   *Solução*: Verifique se o número está corretamente configurado na plataforma.
+
+3. **Erro de template**:
+   ```
+   Error: Template not found or Template parameters invalid
+   ```
+   *Solução*: Confirme se o template foi aprovado e está sendo chamado corretamente.
+
+4. **Limite de mensagens**:
+   ```
+   Error: Message limit reached
+   ```
+   *Solução*: Aguarde o limite ser reestabelecido ou solicite aumento.
+
+5. **Erro de permissão**:
+   ```
+   Error: User has not opted in to receive messages
+   ```
+   *Solução*: O usuário precisa iniciar a conversa ou aceitar receber mensagens.
+
+### CloudFormation Erros Comuns
+
+1. **InsufficientCapabilitiesException**:
+   ```
+   An error occurred (InsufficientCapabilitiesException) when calling the UpdateStack operation: Requires capabilities : [CAPABILITY_AUTO_EXPAND]
+   ```
+   *Solução*: Adicione `CAPABILITY_AUTO_EXPAND` ao comando de atualização de stack.
+
+2. **ValidationError**:
+   ```
+   An error occurred (ValidationError) during the UpdateStack operation: Parameters must have values
+   ```
+   *Solução*: Verifique se todos os parâmetros necessários estão presentes no arquivo `.env` e sendo passados corretamente.
+
 ### Solução de Problemas Comuns
 
+- **Template não aprovado**: Acesse o Facebook Business Manager e verifique o status dos templates
+- **Mensagens não entregues**: Confirme se o número de destino é válido e está no formato correto
+- **Falha na criação de templates**: Use o modo debug para verificar a estrutura do template
+- **Erros na API**: Verifique se a versão da API está atualizada no arquivo `.env` (atual: v21.0)
 - **Erro de região**: Verifique se a região está configurada corretamente no AWS CLI (`aws configure`)
 - **Erro de credenciais**: Certifique-se de que suas credenciais AWS estão atualizadas
 - **Tabela não encontrada**: Verifique se o nome da tabela está correto e se a stack foi implantada
@@ -263,4 +414,53 @@ Este projeto está licenciado sob a licença ISC.
 
 ## Contato
 
-Para mais informações, entre em contato através do email: [seu-email@exemplo.com] 
+Para mais informações, entre em contato através do email: [seu-email@exemplo.com]
+
+## Gerenciamento de Token do WhatsApp
+
+O sistema agora inclui um gerenciador de token de longa duração para a API do WhatsApp Business. 
+Este sistema cuida automaticamente da renovação de token e gerenciamento da autenticação com o WhatsApp.
+
+### Características do Gerenciador de Token
+
+- **Tokens de Longa Duração**: Conversão automática de tokens de curta duração em tokens de longa duração (até 60 dias).
+- **Renovação Automática**: O token é renovado automaticamente a cada 7 dias para evitar expiração.
+- **Armazenamento Seguro**: Os tokens são armazenados de forma segura no AWS Systems Manager Parameter Store e Secrets Manager.
+- **Alta Disponibilidade**: O sistema é desenhado para funcionar mesmo em casos de falha temporária do gerenciador de token.
+
+### Como Configurar o Token do WhatsApp
+
+1. Obtenha as credenciais necessárias no [Portal de Desenvolvedores do Meta](https://developers.facebook.com/):
+   - App ID
+   - App Secret
+   - Token de acesso de usuário (token de curta duração)
+   - ID do Sistema WhatsApp Business (opcional)
+
+2. Execute o script de configuração:
+   ```bash
+   ./scripts/atualizar-token-whatsapp.sh
+   ```
+
+3. Forneça as credenciais quando solicitado.
+
+4. O sistema irá:
+   - Converter o token de curta duração em token de longa duração
+   - Armazenar o token e credenciais de forma segura
+   - Configurar a renovação automática
+
+### Verificando o Status do Token
+
+Para verificar o status atual do token do WhatsApp:
+
+```bash
+aws lambda invoke --function-name antena-app-WhatsAppTokenManager-dev --payload '{"action":"getToken"}' token_status.json
+cat token_status.json
+```
+
+### Resolução de Problemas
+
+Se você enfrentar problemas com o token do WhatsApp:
+
+1. Verifique se o token está válido executando o comando de verificação acima.
+2. Se o token estiver expirado ou inválido, execute o script de atualização novamente.
+3. Verifique os logs do Lambda WhatsAppTokenManager no CloudWatch para mais detalhes sobre erros. 

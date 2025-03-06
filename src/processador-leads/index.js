@@ -9,6 +9,8 @@ const WHATSAPP_SENDER_LAMBDA = process.env.WHATSAPP_SENDER_FUNCTION;
 
 exports.handler = async (event) => {
     try {
+        console.log('Evento recebido:', JSON.stringify(event));
+        
         // Parse da requisição
         const body = JSON.parse(event.body);
         const { name, phone, email, role, source = 'landing_page' } = body;
@@ -102,10 +104,15 @@ exports.handler = async (event) => {
         }).promise();
         
         // Enviar mensagem de boas-vindas via WhatsApp
-        await sendWelcomeMessage(newUser);
+        const welcomeResult = await sendWelcomeMessage(newUser);
+        console.log('Resultado do envio de boas-vindas:', welcomeResult);
         
-        // Agendar fluxo de onboarding
-        await scheduleOnboarding(userId);
+        // CORREÇÃO: Iniciar o fluxo de onboarding explicitamente
+        // Aguardar um pequeno delay para garantir que a mensagem de boas-vindas seja recebida primeiro
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        
+        // Adicionar à fila de onboarding
+        await iniciarFluxoOnboarding(newUser);
         
         return {
             statusCode: 201,
@@ -178,16 +185,24 @@ function mapRoleToSystem(role) {
         'social_media': 'social_media_manager',
         'gestor': 'marketing_manager',
         'empreendedor': 'entrepreneur',
-        'freelancer': 'freelancer'
+        'entrepreneur': 'entrepreneur',
+        'freelancer': 'freelancer',
+        'marketing_manager': 'marketing_manager',
+        'digital_marketing': 'digital_marketer',
+        'content_creator': 'content_creator',
+        'seo_specialist': 'seo_specialist',
+        'marketing_director': 'marketing_director',
+        'other': 'other'
     };
+    
+    // Loga para debug
+    console.log(`Mapeando função: ${role} => ${roleMap[role] || 'unknown'}`);
     
     return roleMap[role] || 'unknown';
 }
 
 // Envia mensagem de boas-vindas via WhatsApp
 async function sendWelcomeMessage(user) {
-    const welcomeMessage = `Olá ${user.name || ''}! 👋 Bem-vindo ao Radar de Tendências em Marketing Digital. Em breve iniciaremos nosso processo de onboarding para personalizar sua experiência. Aguarde alguns instantes para nossa primeira mensagem.`;
-    
     console.log(`Enviando mensagem de boas-vindas para ${user.phoneNumber}`);
     
     await lambda.invoke({
@@ -195,7 +210,21 @@ async function sendWelcomeMessage(user) {
         InvocationType: 'Event',
         Payload: JSON.stringify({
             phoneNumber: user.phoneNumber,
-            message: welcomeMessage,
+            template: {
+                name: "boas_vindas_antena",
+                language: "pt_BR",
+                components: [
+                    {
+                        type: "body",
+                        parameters: [
+                            {
+                                type: "text",
+                                text: user.name || "Usuário"
+                            }
+                        ]
+                    }
+                ]
+            },
             metadata: {
                 messageType: 'welcome',
                 userId: user.userId
@@ -204,23 +233,43 @@ async function sendWelcomeMessage(user) {
     }).promise();
 }
 
-// Agenda fluxo de onboarding
-async function scheduleOnboarding(userId) {
-    // Delay de 2 minutos para iniciar onboarding
-    const onboardingDelay = 2 * 60; // 2 minutos em segundos
+// Nova função para iniciar explicitamente o fluxo de onboarding
+async function iniciarFluxoOnboarding(usuario) {
+    const sqs = new AWS.SQS();
     
-    console.log(`Agendando onboarding para ${userId} em ${onboardingDelay} segundos`);
+    // Mensagem para iniciar o onboarding
+    const onboardingMessage = {
+        tipo: 'iniciar_onboarding',
+        usuario: usuario,
+        etapa: 0, // Começar na primeira etapa
+        timestamp: new Date().toISOString()
+    };
     
-    await eventBridge.putEvents({
-        Entries: [{
-            Source: 'marketing.radar',
-            DetailType: 'onboarding.start',
-            Detail: JSON.stringify({
-                userId,
-                step: 'welcome'
-            }),
-            EventBusName: 'default',
-            Time: new Date(Date.now() + onboardingDelay * 1000)
-        }]
-    }).promise();
+    // Verificar se as variáveis de ambiente estão definidas
+    const queueUrl = process.env.ONBOARDING_QUEUE_URL || process.env.INCOMING_QUEUE_URL || process.env.SQS_RESPONSE_QUEUE_URL;
+    
+    if (!queueUrl) {
+        console.warn('⚠️ AVISO: URL da fila SQS não configurada. Pulando envio da mensagem de onboarding.');
+        console.warn('Configure as variáveis de ambiente ONBOARDING_QUEUE_URL, INCOMING_QUEUE_URL ou SQS_RESPONSE_QUEUE_URL.');
+        // Não falhar o processo de cadastro por causa da fila
+        return { 
+            status: 'skipped',
+            reason: 'QueueUrl not configured'
+        };
+    }
+    
+    // Colocar na fila para processamento pelo orquestrador
+    const params = {
+        QueueUrl: queueUrl,
+        MessageBody: JSON.stringify(onboardingMessage),
+        MessageAttributes: {
+            'MessageType': {
+                DataType: 'String',
+                StringValue: 'OnboardingStart'
+            }
+        }
+    };
+    
+    console.log('Enviando mensagem para iniciar onboarding:', JSON.stringify(params));
+    return sqs.sendMessage(params).promise();
 } 
