@@ -1,0 +1,37 @@
+User-agent: *
+Allow: /
+Sitemap: https://antena.atualise.com/sitemap.xml
+
+# Permitir que todos os bots acessem o conteúdo
+User-agent: Googlebot
+Allow: /
+
+User-agent: Googlebot-Image
+Allow: /
+
+User-agent: Googlebot-Mobile
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: Slurp
+Allow: /
+
+User-agent: DuckDuckBot
+Allow: /
+
+User-agent: Baiduspider
+Allow: /
+
+User-agent: YandexBot
+Allow: /
+
+# Disallow arquivos de configuração e administrativos
+User-agent: *
+Disallow: /.git/
+Disallow: /.github/
+Disallow: /.gitignore
+Disallow: /.env
+Disallow: /.env.example
+Disallow: /node_modules/ 

@@ -522,7 +522,9 @@ async function handleOnboardingWelcome(user, interactionId) {
         { interactionId: outputInteractionId, userId: user.userId },
         {
             name: "onboarding_inicio_antena",
-            language: "pt_BR",
+            language: {
+                code: "pt_BR"
+            },
             components: [
                 {
                     type: "body",
@@ -698,7 +700,9 @@ async function finalizeOnboarding(user, interactionId) {
         { interactionId, userId: user.userId },
         {
             name: "finalizacao_onboarding_antena",
-            language: "pt_BR",
+            language: {
+                code: "pt_BR"
+            },
             components: [
                 {
                     type: "body",

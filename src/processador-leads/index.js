@@ -1,5 +1,6 @@
 const AWS = require('aws-sdk');
 const { v4: uuidv4 } = require('uuid');
+const crypto = require('crypto');
 const dynamoDB = new AWS.DynamoDB.DocumentClient();
 const eventBridge = new AWS.EventBridge();
 const lambda = new AWS.Lambda();
@@ -8,159 +9,180 @@ const USERS_TABLE = process.env.USERS_TABLE;
 const WHATSAPP_SENDER_LAMBDA = process.env.WHATSAPP_SENDER_FUNCTION;
 
 exports.handler = async (event) => {
+    console.log('Evento recebido completo:', JSON.stringify(event, null, 2));
+    
+    // Definindo headers comuns para CORS
+    const headers = {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,Origin,X-Requested-With,Accept',
+        'Access-Control-Allow-Methods': 'OPTIONS,POST',
+        'Access-Control-Allow-Credentials': 'true'
+    };
+    
     try {
-        console.log('Evento recebido:', JSON.stringify(event));
-        
-        // Parse da requisição
-        const body = JSON.parse(event.body);
-        const { name, phone, email, role, source = 'landing_page' } = body;
-        
-        console.log('Novo lead recebido:', { name, phone, email, role, source });
-        
-        // Validação básica
-        if (!name || !phone || !email || !role) {
-            return {
-                statusCode: 400,
-                body: JSON.stringify({ message: 'Campos obrigatórios ausentes' }),
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*'
-                }
-            };
-        }
-        
-        // Verificar se usuário já existe
-        const userExists = await checkIfUserExists(phone);
-        
-        if (userExists) {
-            console.log('Usuário já registrado:', userExists);
+        // Se for uma requisição OPTIONS, retornar resposta CORS
+        if (event.httpMethod === 'OPTIONS') {
+            console.log('Requisição OPTIONS recebida, retornando headers CORS');
             return {
                 statusCode: 200,
-                body: JSON.stringify({ 
-                    message: 'Usuário já registrado',
-                    userId: userExists
-                }),
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*'
-                }
+                headers,
+                body: JSON.stringify({})
             };
         }
         
-        // Criar novo usuário
-        const userId = `u${uuidv4().replace(/-/g, '')}`;
+        // Verificar se é um método POST
+        if (event.httpMethod !== 'POST') {
+            console.log(`Método HTTP não suportado: ${event.httpMethod}`);
+            return {
+                statusCode: 405,
+                headers,
+                body: JSON.stringify({ message: 'Método não permitido' })
+            };
+        }
         
+        // Registrando headers recebidos
+        console.log('Headers recebidos:', JSON.stringify(event.headers, null, 2));
+        
+        // Parsear o corpo da requisição
+        const requestBody = JSON.parse(event.body);
+        console.log('Corpo da requisição:', JSON.stringify(requestBody, null, 2));
+        
+        // Verificar se todos os campos obrigatórios estão presentes
+        if (!requestBody.name || !requestBody.phone || !requestBody.email || !requestBody.role) {
+            console.log('Campos obrigatórios ausentes:', JSON.stringify(requestBody, null, 2));
+            return {
+                statusCode: 400,
+                headers,
+                body: JSON.stringify({ message: 'Todos os campos são obrigatórios' })
+            };
+        }
+        
+        // Normalizar o número de telefone
+        const phoneNumber = normalizePhone(requestBody.phone);
+        console.log('Número de telefone normalizado:', phoneNumber);
+        
+        // Verificar se o usuário já existe pelo número de telefone
+        const existingUser = await checkIfUserExists(phoneNumber);
+        console.log('Verificação de usuário existente:', JSON.stringify(existingUser, null, 2));
+        
+        if (existingUser) {
+            console.log('Usuário já cadastrado:', JSON.stringify(existingUser, null, 2));
+            return {
+                statusCode: 200,
+                headers,
+                body: JSON.stringify({ message: 'Usuário já cadastrado' })
+            };
+        }
+        
+        // Gerar um ID único para o usuário
+        const userId = `usr${crypto.randomBytes(16).toString('hex')}`;
+        console.log('Novo userId gerado:', userId);
+        
+        // Criar um novo usuário
         const newUser = {
-            userId,
-            phoneNumber: normalizePhone(phone),
-            email,
-            name,
+            userId: userId,
+            phoneNumber: phoneNumber,
+            name: requestBody.name,
+            email: requestBody.email,
+            role: requestBody.role,
             createdAt: new Date().toISOString(),
-            lastActive: new Date().toISOString(),
             onboardingCompleted: false,
-            source,
-            preferences: {
-                messageFrequency: 'medium',
-                contentTypes: ['news', 'tools', 'tips'],
-                primaryInterest: 'general_marketing',
-                interests: [
-                    { category: 'general_marketing', score: 1.0 }
-                ],
-                preferredTime: { start: '08:00', end: '20:00' },
-                preferredContentFormat: 'detailed',
-                optIns: {
-                    marketing: true,
-                    thirdParty: false,
-                    analytics: true
-                }
-            },
             profile: {
-                role: mapRoleToSystem(role),
-                companySize: 'unknown',
-                industry: 'unknown',
-                experience: 'unknown',
-                location: {
-                    country: 'Brasil'
-                },
-                toolsUsed: [],
-                challenges: []
+                onboardingStep: 'welcome'
             },
-            engagement: {
-                engagementScore: 50,
-                totalMessages: 0,
-                responseRate: 0,
-                contentClicks: 0,
-                referrals: 0
+            preferences: {
+                frequency: 'weekly',
+                interests: []
             },
-            segments: ['new_user']
+            metrics: {
+                totalInteractions: 0,
+                lastInteraction: new Date().toISOString()
+            }
         };
         
-        console.log('Criando novo usuário:', userId);
+        console.log('Novo usuário a ser criado:', JSON.stringify(newUser, null, 2));
         
-        // Salvar no DynamoDB
-        await dynamoDB.put({
-            TableName: USERS_TABLE,
+        // Salvar o novo usuário no DynamoDB
+        const dynamodbParams = {
+            TableName: process.env.USERS_TABLE,
             Item: newUser
-        }).promise();
+        };
+        
+        await dynamoDB.put(dynamodbParams).promise();
+        console.log('Usuário salvo com sucesso no DynamoDB');
         
         // Enviar mensagem de boas-vindas via WhatsApp
-        const welcomeResult = await sendWelcomeMessage(newUser);
-        console.log('Resultado do envio de boas-vindas:', welcomeResult);
-        
-        // CORREÇÃO: Iniciar o fluxo de onboarding explicitamente
-        // Aguardar um pequeno delay para garantir que a mensagem de boas-vindas seja recebida primeiro
-        await new Promise(resolve => setTimeout(resolve, 3000));
-        
-        // Adicionar à fila de onboarding
-        await iniciarFluxoOnboarding(newUser);
+        await sendWelcomeMessage(newUser);
+        console.log('Mensagem de boas-vindas enviada com sucesso');
         
         return {
             statusCode: 201,
-            body: JSON.stringify({
-                message: 'Usuário criado com sucesso',
-                userId
-            }),
-            headers: {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
-            }
+            headers,
+            body: JSON.stringify({ message: 'Usuário criado com sucesso', userId })
         };
-        
     } catch (error) {
-        console.error('Erro ao processar lead:', error);
-        
+        console.error('Erro ao processar o cadastro:', error);
         return {
             statusCode: 500,
-            body: JSON.stringify({
-                message: 'Falha ao processar lead',
-                error: error.message
-            }),
-            headers: {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
-            }
+            headers,
+            body: JSON.stringify({ 
+                message: 'Erro ao processar o cadastro', 
+                error: error.message 
+            })
         };
     }
 };
 
-// Verifica se usuário já existe pelo número de telefone
-async function checkIfUserExists(phone) {
-    const normalizedPhone = normalizePhone(phone);
+// Função para verificar se um usuário já existe pelo número de telefone
+async function checkIfUserExists(phoneNumber) {
+    console.log('Verificando se usuário existe com o número:', phoneNumber);
     
-    const result = await dynamoDB.query({
-        TableName: USERS_TABLE,
-        IndexName: 'PhoneNumberIndex',
-        KeyConditionExpression: 'phoneNumber = :phone',
-        ExpressionAttributeValues: {
-            ':phone': normalizedPhone
+    try {
+        // Usar o índice secundário global PhoneNumberIndex para consultar pelo número de telefone
+        const queryParams = {
+            TableName: process.env.USERS_TABLE,
+            IndexName: 'PhoneNumberIndex',
+            KeyConditionExpression: 'phoneNumber = :phoneNumber',
+            ExpressionAttributeValues: {
+                ':phoneNumber': phoneNumber
+            }
+        };
+        
+        console.log('Parâmetros da query:', JSON.stringify(queryParams, null, 2));
+        
+        const queryResult = await dynamoDB.query(queryParams).promise();
+        console.log('Resultado da query:', JSON.stringify(queryResult, null, 2));
+        
+        if (queryResult.Items && queryResult.Items.length > 0) {
+            console.log('Usuário encontrado pela query:', JSON.stringify(queryResult.Items[0], null, 2));
+            return queryResult.Items[0];
         }
-    }).promise();
-    
-    if (result.Items && result.Items.length > 0) {
-        return result.Items[0].userId;
+        
+        // Se não encontrou pelo índice, faz um scan (menos eficiente, mas garante)
+        const scanParams = {
+            TableName: process.env.USERS_TABLE,
+            FilterExpression: 'phoneNumber = :phoneNumber',
+            ExpressionAttributeValues: {
+                ':phoneNumber': phoneNumber
+            }
+        };
+        
+        console.log('Parâmetros do scan:', JSON.stringify(scanParams, null, 2));
+        
+        const scanResult = await dynamoDB.scan(scanParams).promise();
+        console.log('Resultado do scan:', JSON.stringify(scanResult, null, 2));
+        
+        if (scanResult.Items && scanResult.Items.length > 0) {
+            console.log('Usuário encontrado pelo scan:', JSON.stringify(scanResult.Items[0], null, 2));
+            return scanResult.Items[0];
+        }
+        
+        return null;
+    } catch (error) {
+        console.error('Erro ao verificar usuário existente:', error);
+        throw error;
     }
-    
-    return null;
 }
 
 // Normaliza número de telefone para formato internacional
@@ -212,7 +234,9 @@ async function sendWelcomeMessage(user) {
             phoneNumber: user.phoneNumber,
             template: {
                 name: "boas_vindas_antena",
-                language: "pt_BR",
+                language: {
+                    code: "pt_BR"
+                },
                 components: [
                     {
                         type: "body",
@@ -231,6 +255,32 @@ async function sendWelcomeMessage(user) {
             }
         })
     }).promise();
+}
+
+// Função para enviar mensagem via WhatsApp
+async function sendWhatsAppMessage(phoneNumber, message) {
+    console.log(`Enviando mensagem para ${phoneNumber}: ${message}`);
+    
+    try {
+        await lambda.invoke({
+            FunctionName: WHATSAPP_SENDER_LAMBDA,
+            InvocationType: 'Event',
+            Payload: JSON.stringify({
+                phoneNumber: phoneNumber,
+                message: message,
+                metadata: {
+                    messageType: 'text',
+                    source: 'lead_processor'
+                }
+            })
+        }).promise();
+        
+        console.log('Mensagem enviada com sucesso');
+        return true;
+    } catch (error) {
+        console.error('Erro ao enviar mensagem WhatsApp:', error);
+        throw error;
+    }
 }
 
 // Nova função para iniciar explicitamente o fluxo de onboarding

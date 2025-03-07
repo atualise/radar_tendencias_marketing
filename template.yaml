@@ -107,6 +107,12 @@ Globals:
         WHATSAPP_PHONE_NUMBER_ID: !Ref WhatsAppPhoneNumberId
         TOKEN_PARAMETER_NAME: !Sub /antena/whatsapp/token-${Environment}
         TOKEN_SECRET_NAME: !Sub antena/whatsapp/credentials-${Environment}
+  Api:
+    Cors:
+      AllowMethods: "'OPTIONS,POST'"
+      AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,Origin,X-Requested-With,Accept'"
+      AllowOrigin: "'https://antena.atualise.com'"
+      AllowCredentials: true
 
 Resources:
   # Tabelas DynamoDB
@@ -191,6 +197,18 @@ Resources:
       RedrivePolicy:
         deadLetterTargetArn: !GetAtt ResponseDeadLetterQueue.Arn
         maxReceiveCount: 5
+
+  # Definição da API Gateway
+  ApiGateway:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub ${AWS::StackName}-API-${Environment}
+      StageName: Prod
+      Cors:
+        AllowMethods: "'OPTIONS,POST'"
+        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,Origin,X-Requested-With,Accept'"
+        AllowOrigin: "'https://antena.atualise.com'"
+        AllowCredentials: true
 
   ResponseDeadLetterQueue:
     Type: AWS::SQS::Queue
@@ -318,6 +336,7 @@ Resources:
           Properties:
             Path: /webhook
             Method: any
+            RestApiId: !Ref ApiGateway
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref UsersTable
@@ -343,6 +362,7 @@ Resources:
           Properties:
             Path: /leads
             Method: post
+            RestApiId: !Ref ApiGateway
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref UsersTable
@@ -503,13 +523,13 @@ Outputs:
   # URLs e ARNs importantes
   WebhookApiUrl:
     Description: URL do API Gateway para receber webhooks do WhatsApp
-    Value: !Sub https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/webhook
+    Value: !Sub https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/Prod/webhook
   
   # Outputs de domínio customizado removidos pois o domínio agora é apenas para CloudFront
   
   LeadsApiUrl:
     Description: URL do API Gateway para receber leads da landing page
-    Value: !Sub https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/leads
+    Value: !Sub https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/Prod/leads
 
   LandingPageURL:
     Description: URL da landing page

@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste de Formulário - Antena</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #333;
+            background-color: #f8f9fa;
+            padding-top: 50px;
+        }
+        .form-container {
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            padding: 30px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .btn-primary {
+            background-color: #6c5ce7;
+            border-color: #6c5ce7;
+            padding: 10px 20px;
+        }
+        .btn-primary:hover {
+            background-color: #5d4dcf;
+            border-color: #5d4dcf;
+        }
+        .alert {
+            margin-top: 20px;
+        }
+        h1 {
+            margin-bottom: 30px;
+            color: #6c5ce7;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="form-container">
+            <h1 class="text-center">Conecte sua Antena</h1>
+            
+            <form id="leadForm">
+                <div class="mb-3">
+                    <label for="name" class="form-label">Nome completo</label>
+                    <input type="text" class="form-control" id="name" name="name" required>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="email" class="form-label">Email</label>
+                    <input type="email" class="form-control" id="email" name="email" required>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="phone" class="form-label">WhatsApp</label>
+                    <input type="tel" class="form-control" id="phone" name="phone" placeholder="+55 (DDD) 99999-9999" required>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="role" class="form-label">Qual seu papel no marketing?</label>
+                    <select class="form-select" id="role" name="role" required>
+                        <option value="" selected disabled>Selecione uma opção</option>
+                        <option value="marketeiro">Marketeiro</option>
+                        <option value="social_media">Social Media</option>
+                        <option value="gestor">Gestor de Marketing</option>
+                        <option value="empreendedor">Empreendedor</option>
+                        <option value="freelancer">Freelancer</option>
+                    </select>
+                </div>
+                
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-primary btn-lg">Conectar Antena</button>
+                </div>
+            </form>
+            
+            <div id="formLoading" class="alert alert-info text-center" style="display: none;">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Conectando...</span>
+                </div>
+                <p class="mt-2">Conectando sua antena...</p>
+            </div>
+            
+            <div id="formSuccess" class="alert alert-success text-center" style="display: none;">
+                <p>Antena conectada com sucesso! Aguarde novidades no seu WhatsApp.</p>
+            </div>
+            
+            <div id="formError" class="alert alert-danger" style="display: none;">
+                Ocorreu um erro ao conectar sua antena. Por favor, tente novamente.
+            </div>
+            
+            <div id="corsDebug" class="mt-4">
+                <h5>Debug de CORS:</h5>
+                <pre id="corsLogs" style="background-color: #f8f9fa; padding: 10px; border-radius: 5px; max-height: 200px; overflow-y: auto;"></pre>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('leadForm');
+            const logsArea = document.getElementById('corsLogs');
+            
+            // Função para adicionar logs
+            function log(message) {
+                console.log(message);
+                const timestamp = new Date().toLocaleTimeString();
+                logsArea.innerHTML += `${timestamp}: ${message}\n`;
+                logsArea.scrollTop = logsArea.scrollHeight;
+            }
+            
+            // Versões de testes fetch
+            const fetchOptions = [
+                {
+                    name: "Padrão (sem credentials)",
+                    options: {
+                        credentials: undefined,
+                        mode: 'cors'
+                    }
+                },
+                {
+                    name: "Same-Origin",
+                    options: {
+                        credentials: 'same-origin',
+                        mode: 'cors'
+                    }
+                },
+                {
+                    name: "Include",
+                    options: {
+                        credentials: 'include',
+                        mode: 'cors'
+                    }
+                },
+                {
+                    name: "No-Cors",
+                    options: {
+                        credentials: 'include',
+                        mode: 'no-cors'
+                    }
+                }
+            ];
+            
+            let currentOption = 0;
+            
+            form.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                // Limpar logs anteriores
+                logsArea.innerHTML = '';
+                
+                // Coletar dados do formulário
+                const formData = {
+                    name: document.getElementById('name').value,
+                    email: document.getElementById('email').value,
+                    phone: document.getElementById('phone').value,
+                    role: document.getElementById('role').value
+                };
+                
+                log('Dados do formulário: ' + JSON.stringify(formData));
+                
+                // Mostrar spinner
+                document.getElementById('formSuccess').style.display = 'none';
+                document.getElementById('formError').style.display = 'none';
+                document.getElementById('formLoading').style.display = 'block';
+                
+                // API endpoint
+                const apiEndpoint = 'https://api-antena.atualise.com';
+                log(`Endpoint da API: ${apiEndpoint}/leads`);
+                
+                // Escolher opção de fetch
+                const fetchOption = fetchOptions[currentOption];
+                log(`Testando opção ${currentOption + 1}/${fetchOptions.length}: ${fetchOption.name}`);
+                
+                try {
+                    const fetchConfig = {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Origin': window.location.origin
+                        },
+                        ...fetchOption.options,
+                        body: JSON.stringify(formData)
+                    };
+                    
+                    log('Configuração fetch: ' + JSON.stringify(fetchConfig));
+                    
+                    const response = await fetch(apiEndpoint + '/leads', fetchConfig);
+                    log(`Status da resposta: ${response.status}`);
+                    
+                    // Listar todos os cabeçalhos recebidos
+                    response.headers.forEach((value, name) => {
+                        log(`Cabeçalho: ${name}: ${value}`);
+                    });
+                    
+                    if (response.status >= 200 && response.status < 300) {
+                        const responseText = await response.text();
+                        log('Resposta bruta: ' + responseText);
+                        
+                        try {
+                            const responseData = JSON.parse(responseText);
+                            log('Resposta de sucesso: ' + JSON.stringify(responseData));
+                            
+                            document.getElementById('formSuccess').style.display = 'block';
+                            document.getElementById('formError').style.display = 'none';
+                            document.getElementById('formLoading').style.display = 'none';
+                            form.reset();
+                        } catch (parseError) {
+                            log('Erro ao parsear resposta: ' + parseError.message);
+                            throw new Error('Erro ao processar resposta do servidor');
+                        }
+                    } else {
+                        log('Resposta com erro: ' + response.status);
+                        const errorText = await response.text();
+                        log('Texto de erro: ' + errorText);
+                        throw new Error(`Erro ${response.status}: ` + errorText);
+                    }
+                } catch (error) {
+                    log('Erro: ' + error.message);
+                    
+                    if (error.message.includes('NetworkError') || error.message.includes('Failed to fetch')) {
+                        log('Erro de rede detectado - possível problema de CORS');
+                        
+                        // Tentar próxima opção
+                        currentOption = (currentOption + 1) % fetchOptions.length;
+                        log(`Próxima tentativa usará: ${fetchOptions[currentOption].name}`);
+                        
+                        document.getElementById('formError').textContent = 
+                            `Erro de conexão. Testando opção alternativa ${currentOption + 1}/${fetchOptions.length}: ${fetchOptions[currentOption].name}`;
+                        document.getElementById('formError').style.display = 'block';
+                        document.getElementById('formLoading').style.display = 'none';
+                    } else {
+                        document.getElementById('formError').textContent = error.message || 'Ocorreu um erro ao conectar sua antena. Por favor, tente novamente.';
+                        document.getElementById('formError').style.display = 'block';
+                        document.getElementById('formLoading').style.display = 'none';
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html> 

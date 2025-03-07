@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Antena - Assistente de Marketing Digital via WhatsApp</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #4a6ee0;
+        }
+        h2 {
+            margin-top: 30px;
+            color: #333;
+        }
+        pre {
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        code {
+            font-family: Consolas, Monaco, 'Andale Mono', monospace;
+        }
+        .highlight {
+            background-color: #ffffcc;
+            padding: 2px;
+        }
+        .important {
+            color: #d14;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Corrigindo o problema CORS no site Antena</h1>
+    
+    <h2>Problema</h2>
+    <p>
+        O site <strong>antena.atualise.com</strong> está enfrentando um erro "Failed to fetch" ao tentar 
+        enviar dados do formulário para a API. Este erro está relacionado a configurações de CORS 
+        (Cross-Origin Resource Sharing) entre o site e a API.
+    </p>
+    
+    <h2>Solução</h2>
+    <p>
+        A maneira mais simples de resolver este problema é modificar a configuração da requisição fetch 
+        no código JavaScript do site. A requisição atualmente está configurada para incluir credenciais 
+        (<code>credentials: 'include'</code>), o que requer configurações CORS específicas no servidor.
+    </p>
+    
+    <h3>Passos para correção:</h3>
+    <ol>
+        <li>Acesse o código fonte do site e localize o arquivo HTML principal</li>
+        <li>Encontre o trecho de código JavaScript que faz a requisição fetch para a API</li>
+        <li>Modifique o código conforme uma das opções abaixo</li>
+    </ol>
+    
+    <h2>Opção 1: Remover o parâmetro credentials (Recomendado)</h2>
+    <p>
+        Simplesmente remova ou comente a linha que define o parâmetro <code>credentials</code>:
+    </p>
+    
+    <pre><code>// Código original
+fetch(apiEndpoint + '/leads', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+        'Origin': window.location.origin
+    },
+    <span class="highlight important">credentials: 'include',</span>
+    body: JSON.stringify(formData)
+})
+
+// Código modificado
+fetch(apiEndpoint + '/leads', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+        'Origin': window.location.origin
+    },
+    <span class="highlight important">// credentials: 'include',  // Removido ou comentado</span>
+    body: JSON.stringify(formData)
+})</code></pre>
+
+    <h2>Opção 2: Alterar para credentials: 'same-origin'</h2>
+    <p>
+        Como alternativa, você pode mudar o valor de <code>credentials</code> para <code>'same-origin'</code>:
+    </p>
+    
+    <pre><code>// Código original
+fetch(apiEndpoint + '/leads', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+        'Origin': window.location.origin
+    },
+    <span class="highlight important">credentials: 'include',</span>
+    body: JSON.stringify(formData)
+})
+
+// Código modificado
+fetch(apiEndpoint + '/leads', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+        'Origin': window.location.origin
+    },
+    <span class="highlight important">credentials: 'same-origin',</span>
+    body: JSON.stringify(formData)
+})</code></pre>
+
+    <h2>Explicação técnica</h2>
+    <p>
+        O valor <code>include</code> para o parâmetro <code>credentials</code> faz com que a requisição 
+        inclua credenciais (cookies, certificados, etc.) mesmo para solicitações entre origens diferentes. 
+        Isso requer que o servidor retorne explicitamente o cabeçalho <code>Access-Control-Allow-Credentials: true</code> 
+        e que o cabeçalho <code>Access-Control-Allow-Origin</code> não seja <code>*</code> (wildcard), mas sim 
+        uma origem específica.
+    </p>
+    
+    <p>
+        Ao remover este parâmetro ou configurá-lo como <code>'same-origin'</code>, a configuração CORS fica 
+        mais simples e permite o funcionamento correto da API sem ajustes adicionais no backend.
+    </p>
+    
+    <h2>Teste após a modificação</h2>
+    <p>
+        Após fazer estas alterações, teste o formulário novamente para verificar se ele está funcionando 
+        corretamente. A mensagem de erro "Failed to fetch" não deve mais aparecer.
+    </p>
+</body>
+</html> 

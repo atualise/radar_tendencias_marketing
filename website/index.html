@@ -3,281 +3,84 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Antena - Captando o futuro do Marketing Digital</title>
+    <meta name="description" content="Antena - Sua assistente virtual para marketing digital, receba tendências e novidades diretamente no seu WhatsApp.">
+    <meta name="keywords" content="marketing digital, tendências, whatsapp, assistente, inteligência artificial, chatbot">
+    <meta name="author" content="Antena">
+    <meta name="robots" content="index, follow">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://antena.atualise.com/">
+    <meta property="og:title" content="Antena - Sintonizada com o futuro do marketing">
+    <meta property="og:description" content="Receba as principais tendências e novidades de marketing digital diretamente no seu WhatsApp.">
+    <meta property="og:image" content="https://antena.atualise.com/images/og-image.svg">
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://antena.atualise.com/">
+    <meta property="twitter:title" content="Antena - Sintonizada com o futuro do marketing">
+    <meta property="twitter:description" content="Receba as principais tendências e novidades de marketing digital diretamente no seu WhatsApp.">
+    <meta property="twitter:image" content="https://antena.atualise.com/images/og-image.svg">
+    
+    <title>Antena - Sintonizada com o futuro do marketing</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        :root {
-            --primary-color: #3498db; /* Azul mais vibrante para representar a transmissão de sinal */
-            --secondary-color: #6c757d;
-            --accent-color: #2ecc71; /* Verde para ações */
-            --light-color: #f8f9fa;
-            --dark-color: #212529;
-        }
-        
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            line-height: 1.6;
-            color: var(--dark-color);
-        }
-        
-        .hero-section {
-            background: linear-gradient(135deg, #3498db 0%, #9b59b6 100%); /* Gradiente representando ondas e sinais */
-            color: white;
-            padding: 100px 0 80px;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .hero-section::after {
-            content: "";
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            top: 0;
-            left: 0;
-            background: url('https://images.unsplash.com/photo-1516321318423-f06f85e504b3?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80') no-repeat center center;
-            background-size: cover;
-            opacity: 0.15;
-            z-index: 0;
-        }
-        
-        .hero-content {
-            position: relative;
-            z-index: 1;
-        }
-        
-        .hero-title {
-            font-size: 3.5rem;
-            font-weight: 700;
-            margin-bottom: 1.5rem;
-        }
-        
-        .hero-subtitle {
-            font-size: 1.5rem;
-            margin-bottom: 2rem;
-            font-weight: 300;
-        }
-        
-        .section-title {
-            font-size: 2.5rem;
-            font-weight: 600;
-            margin-bottom: 3rem;
-            text-align: center;
-            position: relative;
-        }
-        
-        .section-title:after {
-            content: "";
-            display: block;
-            width: 80px;
-            height: 4px;
-            background: var(--primary-color);
-            margin: 15px auto 0;
-        }
-        
-        .feature-card {
-            padding: 30px 25px;
-            border-radius: 10px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-            margin-bottom: 30px;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            position: relative;
-            z-index: 1;
-            background: white;
-            height: 100%;
-            min-height: 280px;
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .feature-card:hover {
-            transform: translateY(-10px);
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
-        }
-        
-        .feature-icon {
-            font-size: 2.5rem;
-            margin-bottom: 20px;
-            color: var(--primary-color);
-        }
-        
-        .feature-title {
-            font-size: 1.4rem;
-            font-weight: 600;
-            margin-bottom: 15px;
-        }
-        
-        .step-card {
-            padding: 25px;
-            border-radius: 10px;
-            background: var(--light-color);
-            margin-bottom: 20px;
-        }
-        
-        .step-number {
-            display: inline-block;
-            width: 40px;
-            height: 40px;
-            background: var(--primary-color);
-            color: white;
-            border-radius: 50%;
-            text-align: center;
-            line-height: 40px;
-            font-weight: bold;
-            margin-right: 15px;
-        }
-        
-        .testimonial-card {
-            background: white;
-            border-radius: 10px;
-            padding: 30px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-            margin-bottom: 30px;
-        }
-        
-        .testimonial-content {
-            font-style: italic;
-            margin-bottom: 20px;
-        }
-        
-        .testimonial-author {
-            font-weight: bold;
-        }
-        
-        .testimonial-role {
-            color: var(--secondary-color);
-            font-size: 0.9rem;
-        }
-        
-        .faq-item {
-            margin-bottom: 20px;
-        }
-        
-        .faq-question {
-            font-weight: 600;
-            margin-bottom: 10px;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .faq-answer {
-            color: var(--secondary-color);
-            padding: 10px 0 0 20px;
-            display: none;
-        }
-        
-        .cta-section {
-            background: linear-gradient(135deg, #2ecc71 0%, #1abc9c 100%);
-            color: white;
-            padding: 80px 0;
-            text-align: center;
-        }
-        
-        .btn-cta {
-            background: white;
-            color: var(--dark-color);
-            padding: 12px 30px;
-            font-weight: 600;
-            border-radius: 50px;
-            transition: all 0.3s ease;
-            border: none;
-        }
-        
-        .btn-cta:hover {
-            transform: scale(1.05);
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-        }
-        
-        footer {
-            background: var(--dark-color);
-            color: white;
-            padding: 50px 0 20px;
-        }
-        
-        .footer-links a {
-            color: rgba(255, 255, 255, 0.7);
-            text-decoration: none;
-            transition: color 0.3s ease;
-        }
-        
-        .footer-links a:hover {
-            color: white;
-        }
-        
-        .social-links a {
-            color: white;
-            margin-right: 15px;
-            font-size: 1.2rem;
-            transition: transform 0.3s ease;
-            display: inline-block;
-        }
-        
-        .social-links a:hover {
-            transform: translateY(-3px);
-        }
-        
-        .form-control {
-            padding: 12px 20px;
-            border-radius: 5px;
-            margin-bottom: 15px;
-        }
-        
-        .form-group label {
-            font-weight: 500;
-            margin-bottom: 8px;
-        }
-        
-        /* Adicionando animação de onda para representar sinais da antena */
-        .signal-wave {
-            position: absolute;
-            top: 10%;
-            right: 10%;
-            width: 80px;
-            height: 80px;
-            border: 3px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            opacity: 0;
-            animation: wave 4s infinite;
-        }
-        
-        .signal-wave:nth-child(2) {
-            animation-delay: 1s;
-        }
-        
-        .signal-wave:nth-child(3) {
-            animation-delay: 2s;
-        }
-        
-        @keyframes wave {
-            0% {
-                transform: scale(0);
-                opacity: 0.8;
-            }
-            100% {
-                transform: scale(3);
-                opacity: 0;
-            }
-        }
-        
-        @media (max-width: 767px) {
-            .hero-title {
-                font-size: 2.5rem;
-            }
-            
-            .hero-subtitle {
-                font-size: 1.2rem;
-            }
-            
-            .section-title {
-                font-size: 2rem;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="style.css">
+    <link rel="canonical" href="https://antena.atualise.com/">
+    
+    <!-- Structured Data / JSON-LD -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "Antena",
+      "url": "https://antena.atualise.com",
+      "logo": "https://antena.atualise.com/images/logo.png",
+      "description": "Serviço de informações sobre marketing digital via WhatsApp",
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "telephone": "+5511989822151",
+        "contactType": "customer service",
+        "email": "contato@atualise.com"
+      },
+      "sameAs": [
+        "https://facebook.com/antenamkt",
+        "https://twitter.com/antenamkt",
+        "https://instagram.com/antenamkt",
+        "https://linkedin.com/company/antenamkt"
+      ]
+    }
+    </script>
 </head>
 <body>
+    <nav class="navbar navbar-expand-lg sticky-top navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="index.html">Antena</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#inicio">Início</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#recursos">Recursos</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#como-funciona">Como Funciona</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#depoimentos">Depoimentos</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#cadastro">Conecte-se</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
     <!-- Hero Section -->
     <section class="hero-section">
         <div class="signal-wave"></div>
@@ -578,11 +381,19 @@
                                 <div class="form-check mb-4">
                                     <input class="form-check-input" type="checkbox" id="privacyPolicy" required>
                                     <label class="form-check-label" for="privacyPolicy">
-                                        Concordo com a <a href="#" class="text-primary">Política de Privacidade</a> e em receber comunicações via WhatsApp
+                                        Concordo com a <a href="privacidade.html" class="text-primary">Política de Privacidade</a> e em receber comunicações via WhatsApp
                                     </label>
                                 </div>
                                 <button type="submit" class="btn btn-cta btn-lg">Conectar minha antena</button>
                             </form>
+                            <div id="formLoading" class="mt-3" style="display: none;">
+                                <div class="d-flex align-items-center">
+                                    <div class="spinner-border text-primary me-3" role="status">
+                                        <span class="visually-hidden">Carregando...</span>
+                                    </div>
+                                    <span>Conectando sua antena, aguarde um momento...</span>
+                                </div>
+                            </div>
                             <div id="formSuccess" class="alert alert-success mt-3" style="display: none;">
                                 Antena conectada com sucesso! Em breve você receberá uma mensagem no WhatsApp.
                             </div>
@@ -623,16 +434,16 @@
                 <div class="col-md-2 mb-4">
                     <h5 class="mb-4">Legal</h5>
                     <ul class="list-unstyled footer-links">
-                        <li class="mb-2"><a href="#">Termos de Uso</a></li>
-                        <li class="mb-2"><a href="#">Privacidade</a></li>
+                        <li class="mb-2"><a href="termos.html">Termos de Uso</a></li>
+                        <li class="mb-2"><a href="privacidade.html">Privacidade</a></li>
                         <li class="mb-2"><a href="#">Cookies</a></li>
                     </ul>
                 </div>
                 <div class="col-md-4 mb-4">
                     <h5 class="mb-4">Contato</h5>
                     <ul class="list-unstyled">
-                        <li class="mb-2"><i class="fas fa-envelope me-2"></i> contato@antenada.com.br</li>
-                        <li class="mb-2"><i class="fas fa-phone me-2"></i> (11) 98765-4321</li>
+                        <li class="mb-2"><i class="fas fa-envelope me-2"></i> <a href="mailto:contato@atualise.com" class="text-white">contato@atualise.com</a></li>
+                        <li class="mb-2"><i class="fas fa-phone me-2"></i> (11) 98982-2151</li>
                         <li class="mb-2"><i class="fas fa-map-marker-alt me-2"></i> São Paulo, SP - Brasil</li>
                     </ul>
                 </div>
@@ -640,11 +451,21 @@
             <hr class="mt-4 mb-4" style="background-color: rgba(255,255,255,0.1);">
             <div class="row">
                 <div class="col-md-12 text-center">
-                    <p class="mb-0">&copy; 2023 Antena. Todos os direitos reservados.</p>
+                    <p class="mb-0">&copy; 2025 Atualise Serviços Digitais. Todos os direitos reservados.</p>
                 </div>
             </div>
         </div>
     </footer>
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-RSFQ4Z6PSZ"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-RSFQ4Z6PSZ');
+    </script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
@@ -666,32 +487,96 @@
         document.getElementById('leadForm').addEventListener('submit', function(e) {
             e.preventDefault();
             
+            console.log('====== INÍCIO DO DEBUG DE ENVIO DO FORMULÁRIO ======');
+            
+            // Formatar número de telefone para formato internacional
+            let phoneNumber = document.getElementById('whatsapp').value;
+            console.log('Número de telefone original:', phoneNumber);
+            
+            if (phoneNumber.startsWith('0')) {
+                phoneNumber = phoneNumber.substring(1);
+                console.log('Removendo 0 inicial:', phoneNumber);
+            }
+            
+            if (!phoneNumber.startsWith('+')) {
+                if (phoneNumber.startsWith('55')) {
+                    phoneNumber = '+' + phoneNumber;
+                    console.log('Adicionando + a número com 55:', phoneNumber);
+                } else {
+                    phoneNumber = '+55' + phoneNumber;
+                    console.log('Adicionando +55 ao número:', phoneNumber);
+                }
+            }
+            
             const formData = {
                 name: document.getElementById('nome').value,
-                phone: document.getElementById('whatsapp').value,
+                phone: phoneNumber,
                 email: document.getElementById('email').value,
                 role: document.getElementById('cargo').value
             };
             
-            // API endpoint para registrar o lead (será substituído pelo endpoint real do API Gateway)
-            const apiEndpoint = 'https://zq4jvjc3zb.execute-api.us-east-1.amazonaws.com/Prod';
+            console.log('Dados do formulário a serem enviados:', formData);
+            console.log('URL da API:', 'https://api-antena.atualise.com/leads');
             
-            fetch(apiEndpoint + '/leads', {
+            // Mostrar spinner ou indicação de carregamento
+            document.getElementById('formSuccess').style.display = 'none';
+            document.getElementById('formError').style.display = 'none';
+            document.getElementById('formLoading').style.display = 'block';
+            
+            // API endpoint para registrar o lead
+            const apiEndpoint = 'https://api-antena.atualise.com';
+            
+            // CORS Debug - Verificar suporte a CORS do navegador
+            console.log('Verificando suporte a CORS:', window.fetch ? 'Fetch API disponível' : 'Fetch API não disponível');
+            
+            // Configurações de fetch mais robustas
+            const fetchConfig = {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
+                    // Removido Origin header que pode causar problemas
                 },
+                mode: 'cors', // Especificando explicitamente o modo CORS
+                // credentials foi removido completamente
                 body: JSON.stringify(formData)
-            })
+            };
+            
+            console.log('Configuração fetch:', fetchConfig);
+            
+            // Tentativa principal de envio
+            fetch(apiEndpoint + '/leads', fetchConfig)
             .then(response => {
+                console.log('Status da resposta:', response.status);
+                console.log('Headers da resposta:', [...response.headers].map(h => `${h[0]}: ${h[1]}`).join(', '));
+                
                 if (!response.ok) {
-                    throw new Error('Erro na resposta da rede');
+                    return response.text().then(text => {
+                        try {
+                            const errorObj = JSON.parse(text);
+                            console.error('Resposta de erro (objeto):', errorObj);
+                            throw new Error(`Erro ${response.status}: ${errorObj.message || 'Erro desconhecido'}`);
+                        } catch (parseError) {
+                            console.error('Resposta de erro (texto):', text);
+                            throw new Error(`Erro ${response.status}: ${text || 'Erro desconhecido'}`);
+                        }
+                    });
                 }
-                return response.json();
+                return response.text().then(text => {
+                    try {
+                        console.log('Resposta bruta:', text);
+                        return JSON.parse(text);
+                    } catch (parseError) {
+                        console.error('Erro ao parsear resposta JSON:', parseError);
+                        console.log('Conteúdo da resposta:', text);
+                        throw new Error('Erro ao processar resposta do servidor');
+                    }
+                });
             })
             .then(data => {
+                console.log('Resposta de sucesso:', data);
                 document.getElementById('formSuccess').style.display = 'block';
                 document.getElementById('formError').style.display = 'none';
+                document.getElementById('formLoading').style.display = 'none';
                 document.getElementById('leadForm').reset();
                 
                 // Redirecionar após registro bem-sucedido
@@ -700,9 +585,52 @@
                 // }, 3000);
             })
             .catch(error => {
-                console.error('Erro:', error);
-                document.getElementById('formError').style.display = 'block';
-                document.getElementById('formSuccess').style.display = 'none';
+                console.error('Erro completo:', error);
+                
+                // Tentar um fallback com modo no-cors se o erro for relacionado a CORS
+                if (error.message.includes('Failed to fetch') || error.name === 'TypeError') {
+                    console.log('Erro de CORS detectado, tentando fallback com modo no-cors...');
+                    
+                    // Segunda tentativa com no-cors
+                    const fallbackConfig = {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'text/plain' // Mudando content-type para funcionar com no-cors
+                        },
+                        mode: 'no-cors', // Usando no-cors que é mais permissivo
+                        body: JSON.stringify(formData)
+                    };
+                    
+                    console.log('Configuração fallback:', fallbackConfig);
+                    
+                    // Tentativa alternativa
+                    fetch(apiEndpoint + '/leads', fallbackConfig)
+                        .then(response => {
+                            console.log('Resposta fallback recebida!');
+                            // Com no-cors, não podemos ler a resposta, então presumimos sucesso
+                            document.getElementById('formSuccess').style.display = 'block';
+                            document.getElementById('formError').style.display = 'none';
+                            document.getElementById('formLoading').style.display = 'none';
+                            document.getElementById('leadForm').reset();
+                        })
+                        .catch(fallbackError => {
+                            console.error('Erro no fallback:', fallbackError);
+                            document.getElementById('formError').textContent = 'Erro de conexão. Por favor, tente novamente ou use nossa ';
+                            document.getElementById('formError').innerHTML += '<a href="cors-proxy.html" class="alert-link">página alternativa de envio</a>';
+                            document.getElementById('formError').style.display = 'block';
+                            document.getElementById('formSuccess').style.display = 'none';
+                            document.getElementById('formLoading').style.display = 'none';
+                        });
+                } else {
+                    // Erro não relacionado a CORS
+                    document.getElementById('formError').textContent = error.message || 'Ocorreu um erro ao conectar sua antena. Por favor, tente novamente.';
+                    document.getElementById('formError').style.display = 'block';
+                    document.getElementById('formSuccess').style.display = 'none';
+                    document.getElementById('formLoading').style.display = 'none';
+                }
+            })
+            .finally(() => {
+                console.log('====== FIM DO DEBUG DE ENVIO DO FORMULÁRIO ======');
             });
         });
     </script>

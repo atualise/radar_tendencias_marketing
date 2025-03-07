@@ -109,19 +109,19 @@ function determineMessageType(message) {
 // Busca usuário existente ou cria um novo
 async function findOrCreateUser(phoneNumber) {
   try {
-    // Buscar usuário pelo número de telefone
-    const userQuery = await dynamoDB.query({
+    // Verificar se o usuário já existe no sistema
+    const userResult = await dynamoDB.query({
       TableName: USERS_TABLE,
-      IndexName: 'phoneIndex',
-      KeyConditionExpression: 'phoneNumber = :phone',
+      IndexName: 'PhoneNumberIndex',
+      KeyConditionExpression: 'phoneNumber = :phoneNumber',
       ExpressionAttributeValues: {
-        ':phone': phoneNumber
+        ':phoneNumber': phoneNumber
       }
     }).promise();
     
     // Se usuário existir, retornar
-    if (userQuery.Items && userQuery.Items.length > 0) {
-      return userQuery.Items[0];
+    if (userResult.Items && userResult.Items.length > 0) {
+      return userResult.Items[0];
     }
     
     // Caso contrário, criar novo usuário

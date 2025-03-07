@@ -81,7 +81,9 @@ await lambda.invoke({
         phoneNumber: "5511999999999",
         template: {
             name: "nome_do_template",
-            language: "pt_BR",
+            language: {
+                code: "pt_BR"
+            },
             components: [
                 {
                     type: "body",
@@ -98,81 +100,3 @@ await lambda.invoke({
     })
 }).promise();
 ```
-
-## Solução de problemas
-
-### Template rejeitado
-
-Se um template for rejeitado pela Meta, verifique:
-1. Se o conteúdo segue as diretrizes do WhatsApp Business
-2. Se a categoria está correta
-3. Se não há conteúdo proibido (e.g., conteúdo promocional em categorias indevidas)
-
-Faça as correções necessárias e envie novamente o template com um nome levemente diferente (ex: adicione um sufixo como `_v2`).
-
-### Erros de envio
-
-Se uma mensagem de template falhar ao ser enviada, verifique:
-1. Se o template foi aprovado
-2. Se os parâmetros estão corretos (número e tipo)
-3. Se o nome do template está exatamente igual ao aprovado
-
-## Melhores práticas
-
-1. **Teste os templates** antes de implantá-los em produção
-2. **Mantenha templates alternativos** para caso um seja rejeitado
-3. **Monitore as métricas** de envio de templates para identificar problemas
-4. **Atualize periodicamente** seus templates para mantê-los relevantes
-
-## Templates existentes
-
-### 1. boas_vindas_antena
-
-**Descrição**: Mensagem inicial enviada logo após o cadastro do usuário.
-
-**Corpo**:
-```
-Olá {{1}}! 👋 Bem-vindo à Antena, sua fonte de tendências em Marketing Digital. Em breve iniciaremos nosso processo de personalização para melhorar sua experiência. Aguarde alguns instantes para nossa primeira mensagem.
-```
-
-### 2. onboarding_inicio_antena
-
-**Descrição**: Mensagem para iniciar o processo de onboarding.
-
-**Corpo**:
-```
-Olá novamente, {{1}}! 👋
-
-Estou muito feliz em ter você na *Antena*.
-
-Vamos personalizar sua experiência com algumas perguntas rápidas.
-
-*Primeira pergunta:* Qual é o principal objetivo da sua estratégia de marketing digital atualmente?
-
-a) Aumentar tráfego para o site
-b) Gerar mais leads qualificados
-c) Melhorar engajamento nas redes sociais
-d) Aumentar conversões e vendas
-e) Aperfeiçoar o branding e posicionamento
-f) Outro (descreva brevemente)
-```
-
-### 3. finalizacao_onboarding_antena
-
-**Descrição**: Mensagem de finalização do onboarding.
-
-**Corpo**:
-```
-🎉 *Prontinho, {{1}}!*
-
-Seu perfil está configurado e começaremos a enviar conteúdos personalizados em breve.
-
-*Comandos que você pode usar:*
-
-📊 */tendencia [tópico]* - Receba tendências específicas
-🛠️ */ferramenta [tópico]* - Descubra ferramentas úteis
-📈 */case [tópico]* - Veja casos de sucesso
-❓ */ajuda* - Para mais informações
-
-Estamos muito felizes em tê-lo(a) conosco! Se tiver dúvidas, é só perguntar.
-``` 

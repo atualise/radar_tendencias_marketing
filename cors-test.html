@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste CORS com Credenciais</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: #f5f5f5;
+        }
+        .button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <h1>Teste CORS com Credenciais</h1>
+    
+    <p>Este teste verifica se a API está configurada corretamente para suportar requisições com credenciais.</p>
+    
+    <button id="testButton" class="button">Testar API</button>
+    
+    <div class="result" id="result">
+        <p>Resultado aparecerá aqui</p>
+    </div>
+    
+    <h2>Logs</h2>
+    <div class="result" id="logs">
+        <p>Logs aparecerão aqui</p>
+    </div>
+    
+    <script>
+        // Função para adicionar logs
+        function log(message) {
+            const logsDiv = document.getElementById('logs');
+            const timestamp = new Date().toLocaleTimeString();
+            logsDiv.innerHTML += `<p>${timestamp}: ${message}</p>`;
+        }
+        
+        // Função para testar a API
+        async function testAPI() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<p>Testando...</p>';
+            
+            try {
+                log('Iniciando teste de CORS com credentials: include');
+                log('Enviando requisição OPTIONS (preflight)');
+                
+                // Dados do teste
+                const formData = {
+                    name: "Teste CORS",
+                    email: "teste-cors@example.com",
+                    phone: "+5511987654321",
+                    role: "marketeiro"
+                };
+                
+                // API endpoint
+                const apiEndpoint = 'https://api-antena.atualise.com';
+                log(`Endpoint da API: ${apiEndpoint}/leads`);
+                
+                // Verificar suporte a CORS
+                log(`Suporte a CORS do navegador: ${window.fetch ? 'Fetch API disponível' : 'Fetch API não disponível'}`);
+                
+                // Realizar a requisição com credentials
+                const response = await fetch(apiEndpoint + '/leads', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Origin': window.location.origin
+                    },
+                    credentials: 'include', // Este é o ponto importante para o teste
+                    body: JSON.stringify(formData)
+                });
+                
+                log(`Status da resposta: ${response.status}`);
+                
+                // Listar todos os cabeçalhos recebidos
+                const headers = {};
+                response.headers.forEach((value, name) => {
+                    headers[name] = value;
+                    log(`Cabeçalho recebido: ${name}: ${value}`);
+                });
+                
+                const responseBody = await response.json();
+                
+                resultDiv.innerHTML = `
+                    <h3>Teste Completo</h3>
+                    <p><strong>Status:</strong> ${response.status}</p>
+                    <p><strong>Cabeçalhos CORS:</strong></p>
+                    <ul>
+                        <li>Access-Control-Allow-Origin: ${headers['access-control-allow-origin'] || 'Não encontrado'}</li>
+                        <li>Access-Control-Allow-Credentials: ${headers['access-control-allow-credentials'] || 'Não encontrado'}</li>
+                        <li>Access-Control-Allow-Headers: ${headers['access-control-allow-headers'] || 'Não encontrado'}</li>
+                        <li>Access-Control-Allow-Methods: ${headers['access-control-allow-methods'] || 'Não encontrado'}</li>
+                    </ul>
+                    <p><strong>Resposta:</strong></p>
+                    <pre>${JSON.stringify(responseBody, null, 2)}</pre>
+                `;
+                
+                log('Teste concluído com sucesso');
+            } catch (error) {
+                log(`Erro: ${error.message}`);
+                resultDiv.innerHTML = `
+                    <h3>Erro no Teste</h3>
+                    <p>${error.message}</p>
+                    <p>Verifique os logs para mais detalhes</p>
+                `;
+            }
+        }
+        
+        // Adicionar evento ao botão
+        document.getElementById('testButton').addEventListener('click', testAPI);
+    </script>
+</body>
+</html> 
