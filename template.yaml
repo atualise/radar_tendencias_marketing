@@ -109,10 +109,9 @@ Globals:
         TOKEN_SECRET_NAME: !Sub antena/whatsapp/credentials-${Environment}
   Api:
     Cors:
-      AllowMethods: "'OPTIONS,POST'"
+      AllowMethods: "'OPTIONS,POST,GET'"
       AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,Origin,X-Requested-With,Accept'"
-      AllowOrigin: "'https://antena.atualise.com'"
-      AllowCredentials: true
+      AllowOrigin: "'*'"
 
 Resources:
   # Tabelas DynamoDB
@@ -204,11 +203,14 @@ Resources:
     Properties:
       Name: !Sub ${AWS::StackName}-API-${Environment}
       StageName: Prod
+      # Configuração CORS atualizada para a API Gateway
+      # Usando '*' como AllowOrigin para maior compatibilidade
+      # Removido AllowCredentials pois não é compatível com AllowOrigin: '*'
+      # Esta configuração é mais permissiva e resolve problemas de CORS em diversos browsers
       Cors:
-        AllowMethods: "'OPTIONS,POST'"
+        AllowMethods: "'OPTIONS,POST,GET'"
         AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,Origin,X-Requested-With,Accept'"
-        AllowOrigin: "'https://antena.atualise.com'"
-        AllowCredentials: true
+        AllowOrigin: "'*'"
 
   ResponseDeadLetterQueue:
     Type: AWS::SQS::Queue
@@ -352,6 +354,10 @@ Resources:
       CodeUri: src/processador-leads/
       Handler: index.handler
       Description: Processa leads capturados da landing page
+      # Esta função inclui cabeçalhos CORS específicos na resposta
+      # Os cabeçalhos são definidos para permitir a origem '*'
+      # O frontend foi atualizado para NÃO usar credentials nas requisições fetch
+      # garantindo compatibilidade com a configuração atual
       Environment:
         Variables:
           WHATSAPP_SENDER_FUNCTION: !GetAtt WhatsAppSenderFunction.Arn
