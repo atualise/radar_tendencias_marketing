@@ -1,0 +1,33 @@
+# Variáveis de ambiente
+.env
+
+# Dependências
+node_modules/
+**/node_modules/
+
+# Arquivos gerados pelo SAM
+.aws-sam/
+samconfig.toml
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Arquivos de sistema
+.DS_Store
+Thumbs.db
+
+# Arquivos de configuração de IDE/Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Diretórios de build
+dist/
+build/
+
+# Arquivos temporários
+tmp/
+temp/ 

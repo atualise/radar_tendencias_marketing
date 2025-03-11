@@ -16,6 +16,9 @@
   <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
   
+  <!-- Chart.js para gráficos -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+  
   <style>
     .card-header {
       font-weight: bold;
@@ -111,6 +114,9 @@
       </li>
       <li class="nav-item">
         <a class="nav-link" id="kanban-tab" data-toggle="tab" href="#kanban" role="tab">Kanban de Jornada</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" id="perfis-tab" data-toggle="tab" href="#perfis" role="tab">Perfis de Usuários</a>
       </li>
       <li class="nav-item">
         <a class="nav-link" id="dashboards-tab" data-toggle="tab" href="#dashboards" role="tab">Dashboards AWS</a>
@@ -276,6 +282,166 @@
           </div>
         </div>
       </div>
+      
+      <!-- Tab de Perfis de Usuários -->
+      <div class="tab-pane fade" id="perfis" role="tabpanel">
+        <div class="card mt-3">
+          <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Análise de Perfis de Usuários</h5>
+            <button class="btn btn-sm btn-light" id="refreshPerfis">
+              <i class="fas fa-sync-alt"></i> Atualizar
+            </button>
+          </div>
+          <div class="card-body">
+            <div class="row mb-4">
+              <div class="col-md-12">
+                <div class="alert alert-info" id="perfisInfo">
+                  <i class="fas fa-info-circle"></i> Esta visualização mostra estatísticas sobre as escolhas e preferências dos usuários do sistema.
+                </div>
+              </div>
+            </div>
+            
+            <!-- Primeira linha de gráficos -->
+            <div class="row mb-4">
+              <!-- Gráfico de interesses primários -->
+              <div class="col-md-6">
+                <div class="card shadow-sm">
+                  <div class="card-header bg-light">
+                    <h6 class="mb-0">Interesses Primários dos Usuários</h6>
+                  </div>
+                  <div class="card-body">
+                    <canvas id="chartInteressesPrimarios" height="250"></canvas>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Gráfico de frequência de mensagens -->
+              <div class="col-md-6">
+                <div class="card shadow-sm">
+                  <div class="card-header bg-light">
+                    <h6 class="mb-0">Preferência de Frequência de Mensagens</h6>
+                  </div>
+                  <div class="card-body">
+                    <canvas id="chartFrequenciaMensagens" height="250"></canvas>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Segunda linha de gráficos -->
+            <div class="row mb-4">
+              <!-- Gráfico de tipos de conteúdos favoritos -->
+              <div class="col-md-6">
+                <div class="card shadow-sm">
+                  <div class="card-header bg-light">
+                    <h6 class="mb-0">Tipos de Conteúdo Preferidos</h6>
+                  </div>
+                  <div class="card-body">
+                    <canvas id="chartTiposConteudo" height="250"></canvas>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Gráfico de formato de conteúdo preferido -->
+              <div class="col-md-6">
+                <div class="card shadow-sm">
+                  <div class="card-header bg-light">
+                    <h6 class="mb-0">Formato de Conteúdo Preferido</h6>
+                  </div>
+                  <div class="card-body">
+                    <canvas id="chartFormatoConteudo" height="250"></canvas>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Terceira linha de gráficos e estatísticas -->
+            <div class="row mb-4">
+              <!-- Gráfico de cargos/funções -->
+              <div class="col-md-6">
+                <div class="card shadow-sm">
+                  <div class="card-header bg-light">
+                    <h6 class="mb-0">Cargos/Funções dos Usuários</h6>
+                  </div>
+                  <div class="card-body">
+                    <canvas id="chartCargos" height="250"></canvas>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Gráfico de tamanho das empresas -->
+              <div class="col-md-6">
+                <div class="card shadow-sm">
+                  <div class="card-header bg-light">
+                    <h6 class="mb-0">Tamanho das Empresas</h6>
+                  </div>
+                  <div class="card-body">
+                    <canvas id="chartTamanhoEmpresa" height="250"></canvas>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Quarta linha com mapa de calor de horários preferidos -->
+            <div class="row mb-4">
+              <div class="col-md-12">
+                <div class="card shadow-sm">
+                  <div class="card-header bg-light">
+                    <h6 class="mb-0">Horários Preferidos para Receber Conteúdo</h6>
+                  </div>
+                  <div class="card-body">
+                    <canvas id="chartHorarioPreferido" height="200"></canvas>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Quinta linha com dados de engajamento -->
+            <div class="row">
+              <div class="col-md-12">
+                <div class="card shadow-sm">
+                  <div class="card-header bg-light">
+                    <h6 class="mb-0">Desafios Mais Comuns Relatados</h6>
+                  </div>
+                  <div class="card-body">
+                    <canvas id="chartDesafios" height="250"></canvas>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Tab de Dashboards AWS -->
+      <div class="tab-pane fade" id="dashboards" role="tabpanel">
+        <div class="card mt-3">
+          <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Dashboards AWS</h5>
+            <button class="btn btn-sm btn-light" id="refreshDashboards">
+              <i class="fas fa-sync-alt"></i> Atualizar
+            </button>
+          </div>
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="table table-striped table-bordered" id="dashboardsTable">
+                <thead class="thead-dark">
+                  <tr>
+                    <th>Nome</th>
+                    <th>URL</th>
+                    <th>Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="dashboardsTableBody">
+                  <tr>
+                    <td colspan="3" class="text-center">Carregando dashboards...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -320,391 +486,627 @@
   <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
   <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 
-  <!-- Substitua o script principal pelo seguinte -->
-  <script>
-    // Utilitário de depuração
-    const Debug = {
-      show: function() {
-        $('#debug-info').show();
-      },
-      log: function(message) {
-        console.log(message);
-        $('#debug-content').append(`<div>${message}</div>`);
-        this.show();
-      },
-      error: function(message, error) {
-        console.error(message, error);
-        $('#debug-content').append(`<div style="color: red"><strong>ERRO:</strong> ${message}</div>`);
-        if (error) {
-          $('#debug-content').append(`<div style="color: red; font-family: monospace;">${JSON.stringify(error)}</div>`);
-        }
-        this.show();
-      },
-      clear: function() {
-        $('#debug-content').empty();
-      }
-    };
+  <!-- Script para funções administrativas -->
+  <script src="admin-functions.js"></script>
 
+  <!-- Scripts específicos para funcionalidades da interface -->
+  <script>
     $(document).ready(function() {
-      // Botão de depuração (descomente para ativar)
-      $('body').append('<button id="debug-toggle" style="position: fixed; bottom: 10px; right: 10px; z-index: 9999;">Debug</button>');
-      $('#debug-toggle').click(function() {
-        $('#debug-info').toggle();
-      });
-      
-      Debug.log('Inicializando admin panel na versão jQuery: ' + $.fn.jquery);
-      
-      // ===== INÍCIO DA IMPLEMENTAÇÃO DE DRAG AND DROP =====
-      
-      // Função para inicializar o drag and drop
-      function setupDragAndDrop() {
-        // Remover quaisquer handlers anteriores para evitar duplicação
-        $(document).off('dragstart', '.kanban-card');
-        $(document).off('dragover', '.kanban-cards');
-        $(document).off('drop', '.kanban-cards');
-        $(document).off('dragend', '.kanban-card');
-        
-        // Aplicar atributo draggable aos cartões
-        $('.kanban-card').attr('draggable', 'true');
-        
-        // Quando começa a arrastar um cartão
-        $(document).on('dragstart', '.kanban-card', function(event) {
-          const dataTransfer = event.originalEvent.dataTransfer;
-          
-          // Armazenar o ID do usuário e a coluna de origem
-          const card = $(this);
-          const usuarioId = card.data('id');
-          const origemColuna = card.closest('.kanban-cards').attr('id').replace('kanban-', '');
-          
-          dataTransfer.setData('text/plain', JSON.stringify({
-            usuarioId: usuarioId,
-            origem: origemColuna
-          }));
-          
-          // Adicionar classe visual para feedback
-          card.addClass('kanban-card-dragging');
-          
-          Debug.log(`Começou a arrastar o cartão: ${usuarioId} da coluna: ${origemColuna}`);
-        });
-        
-        // Evento para permitir soltar em uma coluna
-        $(document).on('dragover', '.kanban-cards', function(event) {
-          // Prevenir comportamento padrão para permitir soltar
-          event.preventDefault();
-          event.originalEvent.dataTransfer.dropEffect = 'move';
-        });
-        
-        // Quando solta um cartão em outra coluna
-        $(document).on('drop', '.kanban-cards', function(event) {
-          event.preventDefault();
-          
-          try {
-            // Obter dados do cartão arrastado
-            const dataTransfer = event.originalEvent.dataTransfer;
-            const dataString = dataTransfer.getData('text/plain');
-            const data = JSON.parse(dataString);
-            
-            // Obter a coluna de destino
-            const destinoColuna = $(this).attr('id').replace('kanban-', '');
-            const origemColuna = data.origem;
-            const usuarioId = data.usuarioId;
-            
-            Debug.log(`Soltou o cartão: ${usuarioId} da coluna: ${origemColuna} para coluna: ${destinoColuna}`);
-            
-            // Se origem e destino forem iguais, não faz nada
-            if (origemColuna === destinoColuna) {
-              return;
-            }
-            
-            // Mover o cartão visualmente para a nova coluna
-            const $card = $(`.kanban-card[data-id="${usuarioId}"]`);
-            $(this).append($card);
-            
-            // Atualizar visualmente a classe do cartão para o novo estágio
-            $card.removeClass(`kanban-card-${origemColuna}`).addClass(`kanban-card-${destinoColuna}`);
-            
-            // Atualizar contadores
-            updateKanbanCounters();
-            
-            // Enviar ao backend a atualização
-            updateUsuarioEstagio(usuarioId, destinoColuna);
-          } catch (error) {
-            Debug.error('Erro ao processar o drop:', error);
-          }
-        });
-        
-        // Quando termina o drag (seja com sucesso ou cancelado)
-        $(document).on('dragend', '.kanban-card', function() {
-          // Remover a classe visual
-          $(this).removeClass('kanban-card-dragging');
-        });
-      }
-      
-      // Função para atualizar o estágio do usuário no backend
-      function updateUsuarioEstagio(usuarioId, novoEstagio) {
-        if (!usuarioId) {
-          Debug.error('ID do usuário não disponível para atualização');
-          return;
-        }
-        
-        $.ajax({
-          url: `/api/usuarios/${usuarioId}/estagio`,
-          method: 'PUT',
-          contentType: 'application/json',
-          data: JSON.stringify({ novoEstagio: novoEstagio }),
-          success: function(response) {
-            Debug.log(`Usuário ${usuarioId} atualizado com sucesso para ${novoEstagio}`);
-            
-            // Mostrar notificação de sucesso
-            const notification = $(`<div class="alert alert-success alert-dismissible fade show" role="alert">
-              Usuário movido com sucesso para ${novoEstagio}
-              <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                <span aria-hidden="true">&times;</span>
-              </button>
-            </div>`);
-            
-            $('#kanban .card-header').after(notification);
-            
-            // Auto-remover a notificação após 3 segundos
-            setTimeout(() => {
-              notification.alert('close');
-            }, 3000);
-          },
-          error: function(xhr, status, error) {
-            const errorMsg = xhr.responseJSON?.error || error || 'Erro desconhecido';
-            Debug.error(`Erro ao atualizar o estágio do usuário ${usuarioId}`, { status, error: errorMsg });
-            
-            // Notificação de erro (permanente, precisa fechar manualmente)
-            const notification = $(`<div class="alert alert-danger alert-dismissible fade show" role="alert">
-              Erro ao mover o usuário: ${errorMsg}
-              <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                <span aria-hidden="true">&times;</span>
-              </button>
-            </div>`);
-            
-            $('#kanban .card-header').after(notification);
-          }
-        });
-      }
-      
-      // Função para atualizar os contadores de cartões em cada coluna
-      function updateKanbanCounters() {
-        // Atualizar contadores de cada coluna
-        ['novos', 'onboarding', 'em-progresso', 'concluido'].forEach(coluna => {
-          const count = $(`#kanban-${coluna} .kanban-card`).length;
-          $(`#count-${coluna}`).text(count);
-        });
-        
-        // Atualizar contador total
-        const totalCards = $('.kanban-card').length;
-        $('#kanbanTotalUsuarios').text(totalCards);
-      }
-      
-      // ===== FIM DA IMPLEMENTAÇÃO DE DRAG AND DROP =====
-      
-      // Funções para carregar dados DEFINIDAS PRIMEIRO - Corrigindo o ReferenceError
+      // Função para carregar usuários
       function loadUsuarios() {
-        $('#usuariosTableBody').html('<tr><td colspan="5" class="text-center"><i class="fas fa-spinner fa-spin"></i> Carregando usuários...</td></tr>');
-        $('#userStats').html('<div class="alert alert-info"><i class="fas fa-spinner fa-spin"></i> Carregando estatísticas...</div>');
+        $('#userStats').html(`
+          <div class="alert alert-info">
+            <i class="fas fa-spinner fa-spin"></i> Carregando estatísticas de usuários...
+          </div>
+        `);
         
-        console.log('Iniciando carregamento de usuários...');
+        $('#usuariosTableBody').html(`
+          <tr>
+            <td colspan="5" class="text-center">
+              <i class="fas fa-spinner fa-spin"></i> Carregando usuários...
+            </td>
+          </tr>
+        `);
         
         $.ajax({
           url: '/api/usuarios',
           method: 'GET',
-          timeout: 10000,
-          success: function(data) {
-            console.log(`Dados de usuários carregados: ${data.count} usuários`);
-            
-            // Armazenar os dados para referência posterior
-            window.usuariosData = data;
-            
+          success: function(response) {
             // Atualizar estatísticas
+            const total = response.count || 0;
+            const ativos = response.ativos || 0;
+            const percentAtivos = total > 0 ? ((ativos / total) * 100).toFixed(1) : 0;
+            
             $('#userStats').html(`
               <div class="row">
                 <div class="col-md-4">
-                  <div class="card bg-info text-white">
-                    <div class="card-body">
-                      <h5 class="card-title">Total de Usuários</h5>
-                      <p class="card-text display-4">${data.count}</p>
+                  <div class="card bg-primary text-white">
+                    <div class="card-body text-center">
+                      <h3>${total}</h3>
+                      <p class="mb-0">Total de Usuários</p>
                     </div>
                   </div>
                 </div>
                 <div class="col-md-4">
                   <div class="card bg-success text-white">
-                    <div class="card-body">
-                      <h5 class="card-title">Usuários Ativos</h5>
-                      <p class="card-text display-4">${data.ativos || 0}</p>
+                    <div class="card-body text-center">
+                      <h3>${ativos}</h3>
+                      <p class="mb-0">Usuários Ativos</p>
                     </div>
                   </div>
                 </div>
                 <div class="col-md-4">
-                  <div class="alert alert-secondary">
-                    <strong>Tabela DynamoDB:</strong> ${data.table || 'Não informada'}
+                  <div class="card bg-info text-white">
+                    <div class="card-body text-center">
+                      <h3>${percentAtivos}%</h3>
+                      <p class="mb-0">Taxa de Ativação</p>
+                    </div>
                   </div>
                 </div>
               </div>
             `);
             
-            // Limpar tabela
+            // Limpar e preencher tabela
             $('#usuariosTableBody').empty();
             
-            // Verificar se temos usuários
-            if (data.usuarios.length === 0) {
-              $('#usuariosTableBody').html('<tr><td colspan="5" class="text-center">Nenhum usuário encontrado</td></tr>');
-              return;
-            }
-            
-            // Preencher tabela com usuários
-            data.usuarios.forEach(function(usuario, index) {
-              const dataFormatada = new Date(usuario.dataCadastro || usuario.createdAt || Date.now()).toLocaleString('pt-BR');
-              
-              // Determinar o status do usuário
-              let status = 'desconhecido';
-              let statusClass = '';
-              
-              // Verificar todas as possíveis propriedades que indicam status
-              if (usuario.status === 'ativo' || usuario.status === 'active' || 
-                  usuario.situacao === 'ativo' || usuario.situacao === 'active' || 
-                  usuario.ativo === true || usuario.active === true) {
-                status = 'ativo';
-                statusClass = 'status-ativo';
-              } else if (usuario.status === 'inativo' || usuario.status === 'inactive' || 
-                        usuario.situacao === 'inativo' || usuario.situacao === 'inactive' || 
-                        usuario.ativo === false || usuario.active === false) {
-                status = 'inativo';
-                statusClass = 'status-inativo';
-              }
-              
-              // Obter campos principais
-              const nome = usuario.nome || usuario.name || usuario.nomeCompleto || '—';
-              const telefone = usuario.telefone || usuario.whatsapp || usuario.phone || usuario.phoneNumber || '—';
-              // Tentar obter o ID do usuário de todos os campos possíveis
-              const usuarioId = usuario.id || usuario.usuarioId || usuario.userId || 
-                               usuario.telefone || usuario.phoneNumber || usuario.whatsapp || 
-                               usuario._id || usuario.uid || '';
-              
-              // Log para depuração dos IDs
-              if (!usuarioId) {
-                console.warn('Usuário sem ID encontrado:', JSON.stringify(usuario));
-              }
-              
-              $('#usuariosTableBody').append(`
-                <tr>
-                  <td>${nome}</td>
-                  <td>${telefone}</td>
-                  <td><span class="${statusClass}">${status}</span></td>
-                  <td>${dataFormatada}</td>
-                  <td>
-                    <div class="btn-group btn-group-sm" role="group">
-                      <button class="btn btn-info viewUserDetails" data-index="${index}">
-                        <i class="fas fa-eye"></i> Ver
+            if (response.usuarios && response.usuarios.length > 0) {
+              response.usuarios.forEach(function(usuario) {
+                const nome = usuario.name || 'Sem nome';
+                const telefone = usuario.phoneNumber || usuario.telefone || 'Não informado';
+                const status = determinarStatus(usuario);
+                const dataCadastro = formatarData(usuario.createdAt || usuario.dataCadastro || new Date().toISOString());
+                
+                $('#usuariosTableBody').append(`
+                  <tr>
+                    <td>${nome}</td>
+                    <td>${telefone}</td>
+                    <td class="${status === 'Ativo' ? 'status-ativo' : 'status-inativo'}">${status}</td>
+                    <td>${dataCadastro}</td>
+                    <td>
+                      <button class="btn btn-sm btn-info ver-detalhes" data-id="${usuario.userId || usuario.id}">
+                        <i class="fas fa-eye"></i>
                       </button>
-                      ${usuarioId ? 
-                      `<button class="btn btn-danger removeUser" data-index="${index}" data-id="${usuarioId}" data-nome="${nome}">
-                        <i class="fas fa-trash"></i> Remover
-                      </button>` : 
-                      `<button class="btn btn-secondary" disabled title="ID não disponível para este usuário">
-                        <i class="fas fa-trash"></i> Remover
-                      </button>`}
-                    </div>
-                  </td>
+                      <button class="btn btn-sm btn-danger remover-usuario" data-id="${usuario.userId || usuario.id}">
+                        <i class="fas fa-trash"></i>
+                      </button>
+                    </td>
+                  </tr>
+                `);
+              });
+              
+              // Adicionar event listeners para botões
+              $('.ver-detalhes').click(function() {
+                const userId = $(this).data('id');
+                mostrarDetalhesUsuario(userId, response.usuarios);
+              });
+              
+              $('.remover-usuario').click(function() {
+                const userId = $(this).data('id');
+                confirmarRemocaoUsuario(userId);
+              });
+            } else {
+              $('#usuariosTableBody').html(`
+                <tr>
+                  <td colspan="5" class="text-center">Nenhum usuário encontrado</td>
                 </tr>
               `);
-            });
+            }
           },
           error: function(xhr, status, error) {
-            const errorMsg = xhr.responseJSON?.error || error || status;
-            console.error(`Erro ao carregar usuários: ${errorMsg}`, { xhr: xhr.status, status, error });
-            
-            $('#userStats').html(`<div class="alert alert-danger">
-              <h5><i class="fas fa-exclamation-triangle"></i> Erro ao carregar estatísticas</h5>
-              <p>${errorMsg}</p>
-              <p>Status: ${status}, Código: ${xhr.status}</p>
-            </div>`);
+            $('#userStats').html(`
+              <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle"></i> 
+                Erro ao carregar estatísticas: ${error}
+              </div>
+            `);
             
             $('#usuariosTableBody').html(`
               <tr>
                 <td colspan="5" class="text-center text-danger">
-                  <p><i class="fas fa-exclamation-circle"></i> Erro ao carregar usuários: ${errorMsg}</p>
-                  <button class="btn btn-sm btn-primary retry-load-users">Tentar Novamente</button>
+                  Erro ao carregar usuários: ${error}
                 </td>
               </tr>
             `);
-            
-            $('.retry-load-users').on('click', loadUsuarios);
+            console.error('Erro ao carregar usuários:', error);
           }
         });
       }
-
+      
+      // Função para carregar conteúdos
       function loadConteudos() {
-        $('#conteudosTableBody').html('<tr><td colspan="6" class="text-center">Carregando conteúdos...</td></tr>');
-        $('#conteudosStats').html('<div class="alert alert-info">Carregando estatísticas...</div>');
+        $('#conteudosStats').html(`
+          <div class="alert alert-info">
+            <i class="fas fa-spinner fa-spin"></i> Carregando estatísticas de conteúdos...
+          </div>
+        `);
+        
+        $('#conteudosTableBody').html(`
+          <tr>
+            <td colspan="6" class="text-center">
+              <i class="fas fa-spinner fa-spin"></i> Carregando conteúdos...
+            </td>
+          </tr>
+        `);
         
         $.ajax({
           url: '/api/conteudos',
           method: 'GET',
-          success: function(data) {
-            // Armazenar dados para referência
-            window.conteudosData = data;
-            
+          success: function(response) {
             // Atualizar estatísticas
+            const total = response.count || 0;
+            const categorias = response.categorias || {};
+            
+            let categoriasHTML = '';
+            for (const [categoria, count] of Object.entries(categorias)) {
+              categoriasHTML += `<span class="badge badge-primary mr-2">${categoria}: ${count}</span>`;
+            }
+            
             $('#conteudosStats').html(`
               <div class="row">
                 <div class="col-md-4">
-                  <div class="card bg-info text-white">
-                    <div class="card-body">
-                      <h5 class="card-title">Total de Conteúdos</h5>
-                      <p class="card-text display-4">${data.count}</p>
+                  <div class="card bg-primary text-white">
+                    <div class="card-body text-center">
+                      <h3>${total}</h3>
+                      <p class="mb-0">Total de Conteúdos</p>
                     </div>
                   </div>
                 </div>
                 <div class="col-md-8">
-                  <div class="alert alert-secondary">
-                    <strong>Tabela DynamoDB:</strong> ${data.table}
+                  <div class="card">
+                    <div class="card-body">
+                      <h5>Categorias:</h5>
+                      <p>${categoriasHTML || 'Nenhuma categoria encontrada'}</p>
+                    </div>
                   </div>
                 </div>
               </div>
             `);
             
-            // Limpar tabela
+            // Limpar e preencher tabela
             $('#conteudosTableBody').empty();
             
-            // Verificar se temos conteúdos
-            if (data.conteudos.length === 0) {
-              $('#conteudosTableBody').html('<tr><td colspan="6" class="text-center">Nenhum conteúdo encontrado</td></tr>');
-              return;
-            }
-            
-            // Preencher tabela com conteúdos
-            data.conteudos.forEach(function(conteudo, index) {
-              const dataFormatada = new Date(conteudo.dataCriacao || conteudo.timestamp || Date.now()).toLocaleString('pt-BR');
-              const conteudoTexto = conteudo.texto || conteudo.conteudo || conteudo.mensagem || JSON.stringify(conteudo);
-              const previewContent = conteudoTexto.length > 100 ? conteudoTexto.substring(0, 100) + '...' : conteudoTexto;
+            if (response.conteudos && response.conteudos.length > 0) {
+              response.conteudos.forEach(function(conteudo) {
+                const id = conteudo.contentId || conteudo.id || 'ID não disponível';
+                const tipo = conteudo.contentType || conteudo.tipo || 'Não especificado';
+                const usuario = conteudo.userId || conteudo.usuarioId || 'Sistema';
+                const dataCriacao = formatarData(conteudo.createdAt || conteudo.dataCriacao || new Date().toISOString());
+                
+                // Preparar preview do conteúdo
+                let previewConteudo = '';
+                if (conteudo.versions && conteudo.versions.brief) {
+                  previewConteudo = conteudo.versions.brief.substring(0, 100) + '...';
+                } else if (conteudo.conteudo) {
+                  previewConteudo = conteudo.conteudo.substring(0, 100) + '...';
+                } else {
+                  previewConteudo = 'Conteúdo não disponível';
+                }
+                
+                $('#conteudosTableBody').append(`
+                  <tr>
+                    <td>${id}</td>
+                    <td>${tipo}</td>
+                    <td>${usuario}</td>
+                    <td>${dataCriacao}</td>
+                    <td>${previewConteudo}</td>
+                    <td>
+                      <button class="btn btn-sm btn-info ver-conteudo" data-id="${id}">
+                        <i class="fas fa-eye"></i>
+                      </button>
+                    </td>
+                  </tr>
+                `);
+              });
               
-              $('#conteudosTableBody').append(`
+              // Adicionar event listeners para botões
+              $('.ver-conteudo').click(function() {
+                const contentId = $(this).data('id');
+                mostrarDetalhesConteudo(contentId, response.conteudos);
+              });
+            } else {
+              $('#conteudosTableBody').html(`
                 <tr>
-                  <td>${conteudo.id || conteudo.conteudoId || '—'}</td>
-                  <td>${conteudo.tipo || conteudo.tipoConteudo || '—'}</td>
-                  <td>${conteudo.usuarioId || conteudo.telefone || '—'}</td>
-                  <td>${dataFormatada}</td>
-                  <td>${previewContent}</td>
-                  <td>
-                    <button class="btn btn-sm btn-info viewConteudoDetails" data-index="${index}">
-                      <i class="fas fa-eye"></i> Ver
-                    </button>
-                  </td>
+                  <td colspan="6" class="text-center">Nenhum conteúdo encontrado</td>
                 </tr>
               `);
-            });
+            }
           },
-          error: function(err) {
-            $('#conteudosStats').html(`<div class="alert alert-danger">Erro ao carregar estatísticas: ${err.responseJSON?.error || err.statusText}</div>`);
-            $('#conteudosTableBody').html(`<tr><td colspan="6" class="text-center text-danger">Erro ao carregar conteúdos: ${err.responseJSON?.error || err.statusText}</td></tr>`);
+          error: function(xhr, status, error) {
+            $('#conteudosStats').html(`
+              <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle"></i> 
+                Erro ao carregar estatísticas: ${error}
+              </div>
+            `);
+            
+            $('#conteudosTableBody').html(`
+              <tr>
+                <td colspan="6" class="text-center text-danger">
+                  Erro ao carregar conteúdos: ${error}
+                </td>
+              </tr>
+            `);
+            console.error('Erro ao carregar conteúdos:', error);
           }
         });
       }
       
+      // Função para carregar dados do Kanban
+      function loadKanbanData() {
+        // Limpar quadros kanban e adicionar indicadores de carregamento
+        ['novos', 'onboarding', 'em-progresso', 'concluido'].forEach(coluna => {
+          $(`#kanban-${coluna}`).html(`
+            <div class="text-center text-muted">
+              <i class="fas fa-spinner fa-spin"></i> Carregando...
+            </div>
+          `);
+          $(`#count-${coluna}`).text('0');
+        });
+        
+        // Carregar usuários para o kanban
+        $.ajax({
+          url: '/api/usuarios',
+          method: 'GET',
+          success: function(response) {
+            // Mapa para distribuir usuários nas colunas do kanban
+            const kanbanMap = {
+              'novos': [],
+              'onboarding': [],
+              'em-progresso': [],
+              'concluido': []
+            };
+            
+            // Classificar usuários por coluna
+            if (response.usuarios && response.usuarios.length > 0) {
+              $('#kanbanTotalUsuarios').text(response.usuarios.length);
+              
+              response.usuarios.forEach(usuario => {
+                // Determinar a coluna com base no status e comportamento
+                let coluna = 'novos';
+                
+                if (usuario.onboardingCompleted) {
+                  coluna = 'em-progresso';
+                  
+                  // Se tiver alto engajamento, mover para completado
+                  if (usuario.engagement && usuario.engagement.engagementScore > 70) {
+                    coluna = 'concluido';
+                  }
+                } else if (usuario.lastActive) {
+                  // Se não completou onboarding mas tem atividade, está em onboarding
+                  coluna = 'onboarding';
+                }
+                
+                // Adicionar à coluna correspondente
+                kanbanMap[coluna].push(usuario);
+              });
+              
+              // Preencher cada coluna do kanban
+              for (const [coluna, usuarios] of Object.entries(kanbanMap)) {
+                $(`#count-${coluna}`).text(usuarios.length);
+                
+                if (usuarios.length === 0) {
+                  $(`#kanban-${coluna}`).html(`
+                    <div class="text-center text-muted">
+                      <i class="fas fa-inbox"></i> Nenhum usuário nesta coluna
+                    </div>
+                  `);
+                  continue;
+                }
+                
+                $(`#kanban-${coluna}`).empty();
+                
+                // Adicionar cartões para cada usuário
+                usuarios.forEach(usuario => {
+                  const nome = usuario.name || 'Usuário sem nome';
+                  const telefone = usuario.phoneNumber || usuario.telefone || 'Sem telefone';
+                  const dataCadastro = formatarData(usuario.createdAt || usuario.dataCadastro || new Date().toISOString());
+                  
+                  let statusClass = '';
+                  switch (coluna) {
+                    case 'novos': statusClass = 'kanban-card-novo'; break;
+                    case 'onboarding': statusClass = 'kanban-card-onboarding'; break;
+                    case 'em-progresso': statusClass = 'kanban-card-ativo'; break;
+                    case 'concluido': statusClass = 'kanban-card-inativo'; break;
+                  }
+                  
+                  $(`#kanban-${coluna}`).append(`
+                    <div class="card kanban-card ${statusClass}" data-id="${usuario.userId || usuario.id}">
+                      <div class="kanban-card-header">
+                        <strong>${nome}</strong>
+                        <div class="dropdown">
+                          <button class="btn btn-sm py-0 px-1" type="button" data-toggle="dropdown">
+                            <i class="fas fa-ellipsis-v"></i>
+                          </button>
+                          <div class="dropdown-menu dropdown-menu-right">
+                            <a class="dropdown-item ver-usuario" href="#" data-id="${usuario.userId || usuario.id}">
+                              <i class="fas fa-eye"></i> Ver detalhes
+                            </a>
+                            <a class="dropdown-item mover-usuario" href="#" data-coluna="novos">
+                              <i class="fas fa-arrow-right"></i> Mover para Novos
+                            </a>
+                            <a class="dropdown-item mover-usuario" href="#" data-coluna="onboarding">
+                              <i class="fas fa-arrow-right"></i> Mover para Onboarding
+                            </a>
+                            <a class="dropdown-item mover-usuario" href="#" data-coluna="em-progresso">
+                              <i class="fas fa-arrow-right"></i> Mover para Em Progresso
+                            </a>
+                            <a class="dropdown-item mover-usuario" href="#" data-coluna="concluido">
+                              <i class="fas fa-arrow-right"></i> Mover para Concluído
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="kanban-card-body">
+                        <div><i class="fas fa-phone-alt"></i> ${telefone}</div>
+                        <div class="mt-1">
+                          ${usuario.profile && usuario.profile.role ? 
+                            `<span class="badge badge-secondary">${usuario.profile.role}</span>` : ''}
+                          ${usuario.profile && usuario.profile.industry ? 
+                            `<span class="badge badge-info">${usuario.profile.industry}</span>` : ''}
+                        </div>
+                      </div>
+                      <div class="kanban-card-footer">
+                        <span><i class="far fa-calendar-alt"></i> ${dataCadastro}</span>
+                        <span>
+                          ${usuario.engagement && usuario.engagement.engagementScore ? 
+                            `<i class="fas fa-chart-line"></i> ${usuario.engagement.engagementScore}` : 
+                            '<i class="fas fa-circle"></i> Novo'}
+                        </span>
+                      </div>
+                    </div>
+                  `);
+                });
+                
+                // Adicionar listeners para os botões de ação
+                $(`#kanban-${coluna} .ver-usuario`).click(function(e) {
+                  e.preventDefault();
+                  const id = $(this).data('id');
+                  mostrarDetalhesUsuario(id, response.usuarios);
+                });
+                
+                $(`#kanban-${coluna} .mover-usuario`).click(function(e) {
+                  e.preventDefault();
+                  const id = $(this).closest('.kanban-card').data('id');
+                  const colunaDestino = $(this).data('coluna');
+                  // Aqui você pode implementar o código para mover o usuário
+                  // entre as colunas (via API) ou apenas visualmente
+                  alert(`Movendo usuário ${id} para ${colunaDestino}`);
+                });
+              }
+            } else {
+              ['novos', 'onboarding', 'em-progresso', 'concluido'].forEach(coluna => {
+                $(`#kanban-${coluna}`).html(`
+                  <div class="text-center text-muted">
+                    <i class="fas fa-exclamation-circle"></i> Sem dados disponíveis
+                  </div>
+                `);
+              });
+              
+              $('#kanbanTotalUsuarios').text('0');
+            }
+          },
+          error: function(xhr, status, error) {
+            ['novos', 'onboarding', 'em-progresso', 'concluido'].forEach(coluna => {
+              $(`#kanban-${coluna}`).html(`
+                <div class="text-center text-danger">
+                  <i class="fas fa-exclamation-triangle"></i>
+                  Erro ao carregar dados: ${error}
+                </div>
+              `);
+            });
+            
+            console.error('Erro ao carregar dados do kanban:', error);
+          }
+        });
+      }
+      
+      // Funções utilitárias
+      function determinarStatus(usuario) {
+        if (usuario.status === 'ativo' || 
+            usuario.ativo === true || 
+            usuario.situacao === 'ativo' || 
+            usuario.active === true ||
+            (typeof usuario.status === 'number' && usuario.status === 1)) {
+          return 'Ativo';
+        } else {
+          return 'Inativo';
+        }
+      }
+      
+      function formatarData(dataStr) {
+        try {
+          const data = new Date(dataStr);
+          return data.toLocaleDateString('pt-BR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+        } catch (e) {
+          return 'Data inválida';
+        }
+      }
+      
+      function mostrarDetalhesUsuario(userId, usuarios) {
+        const usuario = usuarios.find(u => (u.userId || u.id) === userId);
+        
+        if (!usuario) {
+          alert('Usuário não encontrado!');
+          return;
+        }
+        
+        let detalhesHTML = `
+          <div class="row">
+            <div class="col-md-6">
+              <h5>Informações Básicas</h5>
+              <table class="table table-sm">
+                <tr>
+                  <th>ID:</th>
+                  <td>${usuario.userId || usuario.id || 'N/A'}</td>
+                </tr>
+                <tr>
+                  <th>Nome:</th>
+                  <td>${usuario.name || 'Não informado'}</td>
+                </tr>
+                <tr>
+                  <th>Telefone:</th>
+                  <td>${usuario.phoneNumber || usuario.telefone || 'Não informado'}</td>
+                </tr>
+                <tr>
+                  <th>Email:</th>
+                  <td>${usuario.email || 'Não informado'}</td>
+                </tr>
+                <tr>
+                  <th>Status:</th>
+                  <td class="${determinarStatus(usuario) === 'Ativo' ? 'status-ativo' : 'status-inativo'}">
+                    ${determinarStatus(usuario)}
+                  </td>
+                </tr>
+                <tr>
+                  <th>Data Cadastro:</th>
+                  <td>${formatarData(usuario.createdAt || usuario.dataCadastro || '')}</td>
+                </tr>
+                <tr>
+                  <th>Última Atividade:</th>
+                  <td>${formatarData(usuario.lastActive || usuario.ultimaAtividade || '')}</td>
+                </tr>
+              </table>
+            </div>
+            <div class="col-md-6">
+              <h5>Perfil e Preferências</h5>
+              <div class="card mb-3">
+                <div class="card-body">
+                  ${usuario.profile ? `
+                    <p><strong>Cargo:</strong> ${usuario.profile.role || 'Não informado'}</p>
+                    <p><strong>Empresa:</strong> ${usuario.profile.companySize || 'Não informado'}</p>
+                    <p><strong>Indústria:</strong> ${usuario.profile.industry || 'Não informado'}</p>
+                    <p><strong>Localização:</strong> ${
+                      usuario.profile.location ? 
+                      `${usuario.profile.location.city || ''}, ${usuario.profile.location.state || ''}` :
+                      'Não informada'
+                    }</p>
+                  ` : '<p>Perfil não disponível</p>'}
+                  
+                  ${usuario.preferences ? `
+                    <hr>
+                    <p><strong>Interesse Principal:</strong> ${usuario.preferences.primaryInterest || 'Não informado'}</p>
+                    <p><strong>Frequência de Mensagens:</strong> ${usuario.preferences.messageFrequency || 'Não informado'}</p>
+                    <p><strong>Formato Preferido:</strong> ${usuario.preferences.preferredContentFormat || 'Não informado'}</p>
+                  ` : ''}
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+        
+        $('#modalTitle').text(`Detalhes do Usuário: ${usuario.name || 'Sem nome'}`);
+        $('#modalBody').html(detalhesHTML);
+        $('#detailsModal').modal('show');
+      }
+      
+      function mostrarDetalhesConteudo(contentId, conteudos) {
+        const conteudo = conteudos.find(c => (c.contentId || c.id) === contentId);
+        
+        if (!conteudo) {
+          alert('Conteúdo não encontrado!');
+          return;
+        }
+        
+        let detalhesHTML = `
+          <div class="row">
+            <div class="col-md-5">
+              <h5>Informações Básicas</h5>
+              <table class="table table-sm">
+                <tr>
+                  <th>ID:</th>
+                  <td>${conteudo.contentId || conteudo.id || 'N/A'}</td>
+                </tr>
+                <tr>
+                  <th>Tipo:</th>
+                  <td>${conteudo.contentType || conteudo.tipo || 'Não especificado'}</td>
+                </tr>
+                <tr>
+                  <th>Usuário:</th>
+                  <td>${conteudo.userId || conteudo.usuarioId || 'Sistema'}</td>
+                </tr>
+                <tr>
+                  <th>Data Criação:</th>
+                  <td>${formatarData(conteudo.createdAt || conteudo.dataCriacao || '')}</td>
+                </tr>
+                <tr>
+                  <th>Categorias:</th>
+                  <td>${
+                    conteudo.categories ? 
+                    conteudo.categories.map(cat => `<span class="badge badge-info mr-1">${cat}</span>`).join('') :
+                    (conteudo.categoria ? `<span class="badge badge-info">${conteudo.categoria}</span>` : 'Não especificado')
+                  }</td>
+                </tr>
+              </table>
+            </div>
+            <div class="col-md-7">
+              <h5>Conteúdo</h5>
+              <div class="card">
+                <div class="card-body">
+                  ${conteudo.versions ? `
+                    <ul class="nav nav-tabs" id="contentTabs" role="tablist">
+                      <li class="nav-item">
+                        <a class="nav-link active" id="brief-tab" data-toggle="tab" href="#brief" role="tab">Resumido</a>
+                      </li>
+                      <li class="nav-item">
+                        <a class="nav-link" id="detailed-tab" data-toggle="tab" href="#detailed" role="tab">Detalhado</a>
+                      </li>
+                    </ul>
+                    <div class="tab-content mt-2" id="contentTabsContent">
+                      <div class="tab-pane fade show active" id="brief" role="tabpanel">
+                        <p>${conteudo.versions.brief || 'Não disponível'}</p>
+                      </div>
+                      <div class="tab-pane fade" id="detailed" role="tabpanel">
+                        <p>${conteudo.versions.detailed || 'Não disponível'}</p>
+                      </div>
+                    </div>
+                  ` : (conteudo.conteudo ? `<p>${conteudo.conteudo}</p>` : '<p>Conteúdo não disponível</p>')}
+                </div>
+              </div>
+              
+              ${conteudo.metrics ? `
+                <div class="card mt-3">
+                  <div class="card-header">Métricas</div>
+                  <div class="card-body">
+                    <div class="row">
+                      <div class="col-md-4 text-center">
+                        <h4>${conteudo.metrics.impressions || 0}</h4>
+                        <small>Impressões</small>
+                      </div>
+                      <div class="col-md-4 text-center">
+                        <h4>${conteudo.metrics.clicks || 0}</h4>
+                        <small>Cliques</small>
+                      </div>
+                      <div class="col-md-4 text-center">
+                        <h4>${conteudo.metrics.feedbackScore || 0}</h4>
+                        <small>Avaliação</small>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ` : ''}
+            </div>
+          </div>
+        `;
+        
+        $('#modalTitle').text(`Detalhes do Conteúdo: ${conteudo.title || conteudo.contentId || ''}`);
+        $('#modalBody').html(detalhesHTML);
+        $('#detailsModal').modal('show');
+      }
+      
+      function confirmarRemocaoUsuario(userId) {
+        if (confirm(`Tem certeza que deseja remover o usuário ${userId}?`)) {
+          // Aqui você pode implementar a chamada à API para remover o usuário
+          alert(`Solicitação para remover o usuário ${userId} enviada.`);
+        }
+      }
+
+      // Função para carregar os dashboards
       function loadDashboards() {
         $('#dashboardsList').html(`
           <div class="text-center">
@@ -760,421 +1162,382 @@
         });
       }
       
-      function loadKanban() {
-        // Limpar e mostrar indicador de carregamento
-        ['novos', 'onboarding', 'em-progresso', 'concluido'].forEach(function(coluna) {
-          $(`#kanban-${coluna}`).html('<div class="text-center text-muted"><i class="fas fa-spinner fa-spin"></i> Carregando...</div>');
-          $(`#count-${coluna}`).text('0');
-        });
+      // Função para carregar dados da aba de perfis de usuários
+      function loadPerfisUsuarios() {
+        $('#perfisInfo').html(`
+          <i class="fas fa-spinner fa-spin"></i> Carregando dados de perfis dos usuários...
+        `);
         
-        // Carregar dados dos usuários
+        // Fazer a solicitação para obter os dados dos usuários
         $.ajax({
-          url: '/api/usuarios',
+          url: '/api/usuarios/perfis',
           method: 'GET',
-          success: function(data) {
-            // Armazenar dados para referência
-            window.kanbanData = data;
+          success: function(response) {
+            $('#perfisInfo').html(`
+              <i class="fas fa-info-circle"></i> Análise baseada em ${response.count} usuários.
+              Última atualização: ${new Date().toLocaleString('pt-BR')}
+            `);
             
-            // Contar total de usuários
-            $('#kanbanTotalUsuarios').text(data.count);
-            
-            // Agrupar usuários por estágio
-            const novos = [];
-            const emOnboarding = [];
-            const emProgresso = [];
-            const concluido = [];
-            
-            data.usuarios.forEach(function(usuario) {
-              const estagio = determinarEstagioUsuario(usuario);
-              
-              switch(estagio) {
-                case 'novo':
-                  novos.push(usuario);
-                  break;
-                case 'onboarding':
-                  emOnboarding.push(usuario);
-                  break;
-                case 'ativo':
-                  emProgresso.push(usuario);
-                  break;
-                case 'inativo':
-                  concluido.push(usuario);
-                  break;
-              }
-            });
-            
-            // Atualizar contadores
-            $('#count-novos').text(novos.length);
-            $('#count-onboarding').text(emOnboarding.length);
-            $('#count-em-progresso').text(emProgresso.length);
-            $('#count-concluido').text(concluido.length);
-            
-            // Limpar colunas
-            ['novos', 'onboarding', 'em-progresso', 'concluido'].forEach(function(coluna) {
-              $(`#kanban-${coluna}`).empty();
-            });
-            
-            // Preencher colunas
-            renderizarColuna('#kanban-novos', novos, 'novo');
-            renderizarColuna('#kanban-onboarding', emOnboarding, 'onboarding');
-            renderizarColuna('#kanban-em-progresso', emProgresso, 'ativo');
-            renderizarColuna('#kanban-concluido', concluido, 'inativo');
-            
-            // Configurar drag and drop
-            setupDragAndDrop();
-            
-            // Atualizar contadores visuais
-            updateKanbanCounters();
+            // Processa e exibe os dados como gráficos
+            processarDadosPerfil(response.estatisticas);
           },
-          error: function(err) {
-            ['novos', 'onboarding', 'em-progresso', 'concluido'].forEach(function(coluna) {
-              $(`#kanban-${coluna}`).html(
-                `<div class="alert alert-danger">Erro ao carregar dados: ${err.responseJSON?.error || err.statusText || 'Erro desconhecido'}</div>`
-              );
-            });
+          error: function(xhr, status, error) {
+            $('#perfisInfo').html(`
+              <i class="fas fa-exclamation-triangle text-danger"></i> 
+              Erro ao carregar dados de perfis: ${error}
+            `);
+            console.error('Erro ao carregar perfis:', error);
           }
         });
       }
       
-      // Função para determinar o estágio do usuário
-      function determinarEstagioUsuario(usuario) {
-        // Verificar se tem campo de estágio explícito
-        if (usuario.estagio) {
-          const estagioLower = usuario.estagio.toLowerCase();
-          
-          // Mapear para os estágios do kanban
-          if (estagioLower === 'novo') return 'novo';
-          if (estagioLower === 'onboarding') return 'onboarding';
-          if (estagioLower === 'ativo' || estagioLower === 'em_progresso' || estagioLower === 'em-progresso') return 'ativo';
-          if (estagioLower === 'inativo' || estagioLower === 'concluido') return 'inativo';
-        }
-        
-        if (usuario.onboardingStatus === 'concluido' && 
-            (usuario.status === 'ativo' || usuario.ativo === true)) {
-          return 'ativo';
-        }
-        
-        if (usuario.onboardingStatus === 'em_andamento' || 
-            usuario.onboardingEtapa > 0) {
-          return 'onboarding';
-        }
-        
-        // Se tem data de cadastro recente (últimos 7 dias) e não tem interações, é novo
-        const dataAtual = new Date();
-        const dataCadastro = new Date(usuario.dataCadastro || usuario.createdAt || 0);
-        const diasDesdeRegistro = Math.floor((dataAtual - dataCadastro) / (1000 * 60 * 60 * 24));
-        
-        if (diasDesdeRegistro <= 7 && !usuario.ultimaInteracao) {
-          return 'novo';
-        }
-        
-        // Verificar se está inativo
-        if (usuario.status === 'inativo' || usuario.ativo === false) {
-          return 'inativo';
-        }
-        
-        // Verificar última interação (se não teve interação nos últimos 30 dias, está inativo)
-        if (usuario.ultimaInteracao) {
-          const dataUltimaInteracao = new Date(usuario.ultimaInteracao);
-          const diasDesdeUltimaInteracao = Math.floor((dataAtual - dataUltimaInteracao) / (1000 * 60 * 60 * 24));
-          
-          if (diasDesdeUltimaInteracao > 30) {
-            return 'inativo';
-          }
-        }
-        
-        // Usuário já iniciou a jornada, parece ser ativo
-        if (usuario.ultimaInteracao || usuario.onboardingStatus === 'concluido') {
-          return 'ativo';
-        }
-        
-        // Se nada corresponde, consideramos como novo
-        return 'novo';
-      }
-      
-      // Função para renderizar uma coluna do Kanban
-      function renderizarColuna(selector, usuarios, estagio) {
-        const $coluna = $(selector);
-        
-        if (usuarios.length === 0) {
-          $coluna.html('<div class="text-center text-muted">Nenhum usuário neste estágio</div>');
+      // Função para processar os dados e criar os gráficos
+      function processarDadosPerfil(dados) {
+        // Garantir que temos dados para trabalhar
+        if (!dados || dados.erro) {
+          $('#perfisInfo').html(`
+            <i class="fas fa-exclamation-triangle text-warning"></i> 
+            Nenhum dado de usuário disponível para análise: ${dados.erro || "Erro desconhecido"}
+          `);
           return;
         }
         
-        // Ordenar por data de cadastro (mais recente primeiro)
-        usuarios.sort((a, b) => {
-          const dataA = new Date(a.dataCadastro || a.createdAt || 0);
-          const dataB = new Date(b.dataCadastro || b.createdAt || 0);
-          return dataB - dataA;
-        });
+        // Traduzir os nomes de interesses para português
+        const traducaoInteresses = {
+          'social_media_marketing': 'Marketing em Redes Sociais',
+          'content_marketing': 'Marketing de Conteúdo',
+          'seo': 'SEO',
+          'email_marketing': 'E-mail Marketing',
+          'inbound_marketing': 'Inbound Marketing',
+          'performance_marketing': 'Marketing de Performance',
+          'affiliate_marketing': 'Marketing de Afiliados'
+        };
         
-        // Limpar coluna
-        $coluna.empty();
+        // Traduzir frequências para português
+        const traducaoFreq = {
+          'high': 'Alta',
+          'medium': 'Média',
+          'low': 'Baixa'
+        };
         
-        // Adicionar cartões para cada usuário
-        usuarios.forEach(usuario => {
-          const nome = usuario.nome || usuario.name || 'Sem nome';
-          const telefone = usuario.telefone || usuario.whatsapp || 'Sem telefone';
-          const dataCadastro = new Date(usuario.dataCadastro || usuario.createdAt || Date.now()).toLocaleDateString('pt-BR');
-          const ultimaInteracao = usuario.ultimaInteracao 
-            ? new Date(usuario.ultimaInteracao).toLocaleDateString('pt-BR')
-            : 'Nenhuma';
-          
-          // Informação adicional baseada no estágio
-          let infoAdicional = '';
-          if (estagio === 'onboarding') {
-            const etapa = usuario.onboardingEtapa || 0;
-            infoAdicional = `<div><small>Etapa: ${etapa}</small></div>`;
-          } else if (estagio === 'ativo') {
-            const numInteracoes = usuario.totalInteracoes || 0;
-            infoAdicional = `<div><small>Interações: ${numInteracoes}</small></div>`;
+        // Traduzir tipos de conteúdo para português
+        const traducaoTipos = {
+          'news': 'Notícias',
+          'tools': 'Ferramentas',
+          'cases': 'Casos de Uso',
+          'tips': 'Dicas',
+          'tutorials': 'Tutoriais',
+          'insights': 'Insights'
+        };
+        
+        // Traduzir formatos para português
+        const traducaoFormatos = {
+          'brief': 'Resumido',
+          'detailed': 'Detalhado',
+          'visual': 'Visual'
+        };
+        
+        // Traduzir cargos para português
+        const traducaoCargos = {
+          'marketing_manager': 'Gerente de Marketing',
+          'digital_marketing_specialist': 'Especialista em Marketing Digital',
+          'social_media_manager': 'Gerente de Mídias Sociais',
+          'content_creator': 'Criador de Conteúdo',
+          'entrepreneur': 'Empreendedor',
+          'marketing_analyst': 'Analista de Marketing',
+          'seo_specialist': 'Especialista em SEO',
+          'other': 'Outros'
+        };
+        
+        // Traduzir tamanhos para português
+        const traducaoTamanhos = {
+          '1-10': '1-10 funcionários',
+          '11-50': '11-50 funcionários',
+          '51-200': '51-200 funcionários',
+          '201-500': '201-500 funcionários',
+          '501-1000': '501-1000 funcionários',
+          '1000+': 'Mais de 1000 funcionários'
+        };
+        
+        // Traduzir desafios para português
+        const traducaoDesafios = {
+          'lead_generation': 'Geração de Leads',
+          'content_creation': 'Criação de Conteúdo',
+          'audience_engagement': 'Engajamento de Audiência',
+          'organic_growth': 'Crescimento Orgânico',
+          'roi_measurement': 'Medição de ROI',
+          'customer_acquisition': 'Aquisição de Clientes',
+          'content_strategy': 'Estratégia de Conteúdo',
+          'brand_awareness': 'Reconhecimento de Marca'
+        };
+        
+        // Função para destruir gráfico de forma segura
+        function destroyChart(chartInstance) {
+          if (chartInstance && typeof chartInstance.destroy === 'function') {
+            chartInstance.destroy();
           }
-          
-          // Criar o cartão
-          const card = `
-            <div class="card kanban-card kanban-card-${estagio}" data-id="${usuario.id || usuario.usuarioId || ''}" draggable="true">
-              <div class="kanban-card-header">
-                <strong>${nome}</strong>
-                <span class="badge badge-secondary">${telefone}</span>
-              </div>
-              <div class="kanban-card-body">
-                ${infoAdicional}
-              </div>
-              <div class="kanban-card-footer">
-                <small>Cadastro: ${dataCadastro}</small>
-                <small>Últ. interação: ${ultimaInteracao}</small>
-              </div>
-            </div>
-          `;
-          
-          $coluna.append(card);
-        });
-        
-        // Configurar drag and drop após renderizar os cartões
-        setupDragAndDrop();
-      }
-      
-      // Verificar servidor ativo
-      $.ajax({
-        url: '/api/health',
-        method: 'GET',
-        timeout: 5000,
-        success: function(data) {
-          console.log('Servidor respondendo:', JSON.stringify(data));
-          initializeApp();
-        },
-        error: function(xhr, status, error) {
-          console.error('Servidor não está respondendo corretamente', { xhr: xhr.status, status, error });
-          showServerError();
         }
-      });
-      
-      function showServerError() {
-        $('main .container').prepend(`
-          <div class="alert alert-danger mt-4">
-            <h4><i class="fas fa-exclamation-triangle"></i> Erro de Comunicação com o Servidor</h4>
-            <p>Não foi possível conectar ao servidor local. Verifique se:</p>
-            <ul>
-              <li>O servidor está em execução através do script <code>executar-admin.sh</code></li>
-              <li>Não há outros serviços utilizando a mesma porta</li>
-              <li>O firewall não está bloqueando a conexão</li>
-            </ul>
-            <button class="btn btn-primary" id="retry-connection">Tentar Novamente</button>
-          </div>
-        `);
         
-        $('#retry-connection').click(function() {
-          location.reload();
-        });
-      }
-      
-      function initializeApp() {
-        // Carregar dados iniciais
-        loadUsuarios();
-        
-        // Registrar eventos para as abas
-        $('#conteudos-tab').on('click', function() {
-          if (!window.conteudosLoaded) {
-            loadConteudos();
-            window.conteudosLoaded = true;
-          }
-        });
-        
-        $('#dashboards-tab').on('click', function() {
-          if (!window.dashboardsLoaded) {
-            loadDashboards();
-            window.dashboardsLoaded = true;
-          }
-        });
-        
-        $('#kanban-tab').on('click', function() {
-          if (!window.kanbanLoaded) {
-            loadKanban();
-            window.kanbanLoaded = true;
-          }
-        });
-        
-        // Botões de atualização
-        $('#refreshUsuarios').on('click', loadUsuarios);
-        $('#refreshConteudos').on('click', loadConteudos);
-        $('#refreshDashboards').on('click', loadDashboards);
-        $('#refreshKanban').on('click', loadKanban);
-        
-        // Eventos para ver detalhes de usuários
-        $(document).on('click', '.viewUserDetails', function() {
-          const index = parseInt($(this).data('index'));
-          console.log(`Clique em Ver Detalhes do usuário índice: ${index}`);
-          
-          if (!window.usuariosData || !window.usuariosData.usuarios) {
-            console.error('Dados de usuários não disponíveis', { windowData: !!window.usuariosData });
-            alert('Erro: dados de usuários não estão disponíveis. Tente atualizar a página.');
-            return;
-          }
-          
-          const usuario = window.usuariosData.usuarios[index];
-          if (!usuario) {
-            console.error('Usuário não encontrado no índice', { index, totalUsers: window.usuariosData.usuarios.length });
-            alert('Usuário não encontrado. Tente atualizar a lista.');
-            return;
-          }
-          
-          // Formatar detalhes do usuário
-          let detailsHTML = '<div class="user-details">';
-          detailsHTML += '<h4>Detalhes do Usuário</h4>';
-          detailsHTML += '<pre style="background: #f8f9fa; padding: 15px; border-radius: 5px; max-height: 400px; overflow: auto;">';
-          detailsHTML += JSON.stringify(usuario, null, 2);
-          detailsHTML += '</pre></div>';
-          
-          $('#modalTitle').text(`Usuário: ${usuario.nome || usuario.name || 'Sem nome'}`);
-          $('#modalBody').html(detailsHTML);
-          $('#detailsModal').modal('show');
-        });
-        
-        // Eventos para ver detalhes de conteúdos
-        $(document).on('click', '.viewConteudoDetails', function() {
-          const index = parseInt($(this).data('index'));
-          
-          if (!window.conteudosData || !window.conteudosData.conteudos) {
-            alert('Erro: dados de conteúdos não estão disponíveis. Tente atualizar a página.');
-            return;
-          }
-          
-          const conteudo = window.conteudosData.conteudos[index];
-          if (!conteudo) {
-            alert('Conteúdo não encontrado. Tente atualizar a lista.');
-            return;
-          }
-          
-          // Formatar detalhes do conteúdo
-          let detailsHTML = '<div class="content-details">';
-          detailsHTML += '<h4>Detalhes do Conteúdo</h4>';
-          detailsHTML += '<pre style="background: #f8f9fa; padding: 15px; border-radius: 5px; max-height: 400px; overflow: auto;">';
-          detailsHTML += JSON.stringify(conteudo, null, 2);
-          detailsHTML += '</pre></div>';
-          
-          $('#modalTitle').text(`Conteúdo: ${conteudo.id || conteudo.conteudoId || 'Sem ID'}`);
-          $('#modalBody').html(detailsHTML);
-          $('#detailsModal').modal('show');
-        });
-        
-        // Eventos para remoção de usuários
-        $(document).on('click', '.removeUser', function() {
-          const id = $(this).data('id');
-          const nome = $(this).data('nome');
-          const index = $(this).data('index');
-          
-          if (!id) {
-            alert('Erro: ID do usuário não disponível. Não é possível remover.');
-            // Log detalhado para ajudar diagnóstico
-            Debug.error('Tentativa de remover usuário sem ID', {
-              element: this,
-              dataAttributes: {
-                id: $(this).data('id'),
-                nome: $(this).data('nome'),
-                index: $(this).data('index')
-              } 
-            });
-            return;
-          }
-          
-          // Obter dados completos do usuário para diagnóstico
-          const usuario = window.usuariosData?.usuarios[index];
-          
-          console.log(`Removendo usuário: ID=${id}, Nome=${nome}`, {
-            dadosCompletos: usuario || 'Dados não disponíveis'
-          });
-          
-          if (confirm(`Tem certeza que deseja remover o usuário "${nome}"? Esta ação não pode ser desfeita.`)) {
-            console.log(`Removendo usuário: ID=${id}, Nome=${nome}`);
-            
-            // Adicionar feedback visual para indicar que a operação está em andamento
-            const $row = $(this).closest('tr');
-            $row.addClass('bg-warning');
-            $(this).prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Removendo...');
-            
-            $.ajax({
-              url: `/api/usuarios/${id}`,
-              method: 'DELETE',
-              success: function(response) {
-                console.log(`Usuário removido com sucesso:`, response);
-                
-                // Mostrar detalhes da operação no console para depuração
-                if (response.keyField) {
-                  console.log(`Chave usada para remoção: ${response.keyField}`);
-                }
-                
-                // Feedback visual de sucesso
-                $row.removeClass('bg-warning').addClass('bg-success');
-                setTimeout(() => {
-                  // Notificar o usuário
-                  alert('Usuário removido com sucesso!');
-                  // Recarregar lista
-                  loadUsuarios();
-                }, 500);
+        // 1. Gráfico de Interesses Primários
+        const ctxInteresses = document.getElementById('chartInteressesPrimarios').getContext('2d');
+        destroyChart(window.chartInteresses);
+        window.chartInteresses = new Chart(ctxInteresses, {
+          type: 'doughnut',
+          data: {
+            labels: Object.keys(dados.interessesPrimarios).map(key => traducaoInteresses[key] || key),
+            datasets: [{
+              data: Object.values(dados.interessesPrimarios),
+              backgroundColor: [
+                '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#C9CBCF'
+              ]
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: {
+                position: 'right',
               },
-              error: function(xhr, status, error) {
-                console.error('Erro ao remover usuário', { xhr: xhr.status, status, error });
-                
-                // Remover estado de loading
-                $row.removeClass('bg-warning').addClass('bg-danger');
-                $('.removeUser[data-id="'+id+'"]').prop('disabled', false).html('<i class="fas fa-trash"></i> Remover');
-                
-                // Obter detalhes do erro
-                let errorMessage = 'Erro desconhecido';
-                let errorDetails = '';
-                
-                try {
-                  if (xhr.responseJSON) {
-                    errorMessage = xhr.responseJSON.error || error || 'Erro desconhecido';
-                    
-                    // Coletar detalhes adicionais do erro para exibição
-                    if (xhr.responseJSON.id) {
-                      errorDetails += `\nID do usuário: ${xhr.responseJSON.id}`;
-                    }
-                    if (xhr.responseJSON.code) {
-                      errorDetails += `\nCódigo do erro: ${xhr.responseJSON.code}`;
-                    }
-                    if (xhr.responseJSON.message) {
-                      errorDetails += `\nMensagem: ${xhr.responseJSON.message}`;
-                    }
-                    if (xhr.responseJSON.availableFields) {
-                      errorDetails += `\nCampos disponíveis: ${xhr.responseJSON.availableFields}`;
-                    }
-                  }
-                } catch(e) {
-                  console.error('Erro ao processar resposta de erro:', e);
-                }
-                
-                // Registrar no Debug para troubleshooting
-                Debug.error(`Erro ao remover usuário ${id}`, { xhr, status, error, errorDetails });
-                
-                // Mostrar mensagem de erro detalhada
-                alert(`Erro ao remover usuário: ${errorMessage}${errorDetails}`);
+              title: {
+                display: true,
+                text: 'Distribuição de Interesses Primários'
               }
-            });
+            }
+          }
+        });
+        
+        // 2. Gráfico de Frequência de Mensagens
+        const ctxFreq = document.getElementById('chartFrequenciaMensagens').getContext('2d');
+        destroyChart(window.chartFreq);
+        window.chartFreq = new Chart(ctxFreq, {
+          type: 'pie',
+          data: {
+            labels: Object.keys(dados.freqMensagens).map(key => traducaoFreq[key] || key),
+            datasets: [{
+              data: Object.values(dados.freqMensagens),
+              backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56']
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: {
+                position: 'right',
+              },
+              title: {
+                display: true,
+                text: 'Preferência de Frequência de Mensagens'
+              }
+            }
+          }
+        });
+        
+        // 3. Gráfico de Tipos de Conteúdo Preferidos
+        const ctxTipos = document.getElementById('chartTiposConteudo').getContext('2d');
+        destroyChart(window.chartTipos);
+        window.chartTipos = new Chart(ctxTipos, {
+          type: 'bar',
+          data: {
+            labels: Object.keys(dados.tiposConteudo).map(key => traducaoTipos[key] || key),
+            datasets: [{
+              label: 'Usuários',
+              data: Object.values(dados.tiposConteudo),
+              backgroundColor: '#36A2EB',
+              borderWidth: 1
+            }]
+          },
+          options: {
+            indexAxis: 'y',
+            responsive: true,
+            plugins: {
+              title: {
+                display: true,
+                text: 'Tipos de Conteúdo Mais Solicitados'
+              },
+              legend: {
+                display: false
+              }
+            }
+          }
+        });
+        
+        // 4. Gráfico de Formato de Conteúdo Preferido
+        const ctxFormatos = document.getElementById('chartFormatoConteudo').getContext('2d');
+        destroyChart(window.chartFormatos);
+        window.chartFormatos = new Chart(ctxFormatos, {
+          type: 'pie',
+          data: {
+            labels: Object.keys(dados.formatosConteudo).map(key => traducaoFormatos[key] || key),
+            datasets: [{
+              data: Object.values(dados.formatosConteudo),
+              backgroundColor: ['#FFCE56', '#4BC0C0', '#9966FF']
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: {
+                position: 'right',
+              },
+              title: {
+                display: true,
+                text: 'Formato de Conteúdo Preferido'
+              }
+            }
+          }
+        });
+        
+        // 5. Gráfico de Cargos
+        const ctxCargos = document.getElementById('chartCargos').getContext('2d');
+        destroyChart(window.chartCargos);
+        window.chartCargos = new Chart(ctxCargos, {
+          type: 'pie',
+          data: {
+            labels: Object.keys(dados.cargos).map(key => traducaoCargos[key] || key),
+            datasets: [{
+              data: Object.values(dados.cargos),
+              backgroundColor: [
+                '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', 
+                '#9966FF', '#FF9F40', '#C9CBCF', '#1B998B'
+              ]
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: {
+                position: 'right',
+              },
+              title: {
+                display: true,
+                text: 'Distribuição de Cargos/Funções'
+              }
+            }
+          }
+        });
+        
+        // 6. Gráfico de Tamanho das Empresas
+        const ctxTamanho = document.getElementById('chartTamanhoEmpresa').getContext('2d');
+        destroyChart(window.chartTamanho);
+        window.chartTamanho = new Chart(ctxTamanho, {
+          type: 'bar',
+          data: {
+            labels: Object.keys(dados.tamanhoEmpresas).map(key => traducaoTamanhos[key] || key),
+            datasets: [{
+              label: 'Usuários',
+              data: Object.values(dados.tamanhoEmpresas),
+              backgroundColor: '#4BC0C0',
+              borderWidth: 1
+            }]
+          },
+          options: {
+            responsive: true,
+            indexAxis: 'y',
+            plugins: {
+              title: {
+                display: true,
+                text: 'Tamanho das Empresas'
+              },
+              legend: {
+                display: false
+              }
+            }
+          }
+        });
+        
+        // 7. Gráfico de Desafios Mais Comuns
+        const ctxDesafios = document.getElementById('chartDesafios').getContext('2d');
+        destroyChart(window.chartDesafios);
+        window.chartDesafios = new Chart(ctxDesafios, {
+          type: 'bar',
+          data: {
+            labels: Object.keys(dados.desafios).map(key => traducaoDesafios[key] || key),
+            datasets: [{
+              label: 'Usuários',
+              data: Object.values(dados.desafios),
+              backgroundColor: '#9966FF',
+              borderWidth: 1
+            }]
+          },
+          options: {
+            indexAxis: 'y',
+            responsive: true,
+            plugins: {
+              title: {
+                display: true,
+                text: 'Desafios Mais Comuns Relatados'
+              },
+              legend: {
+                display: false
+              }
+            }
+          }
+        });
+        
+        // 8. Gráfico de Horários Preferidos
+        const ctxHorarios = document.getElementById('chartHorarioPreferido').getContext('2d');
+        destroyChart(window.chartHorarios);
+        
+        // Criar rótulos para as horas
+        const labelsHoras = [];
+        for (let i = 0; i < 24; i++) {
+          labelsHoras.push(`${i < 10 ? '0' + i : i}:00`);
+        }
+        
+        window.chartHorarios = new Chart(ctxHorarios, {
+          type: 'bar',
+          data: {
+            labels: labelsHoras,
+            datasets: [{
+              label: 'Preferência',
+              data: dados.horariosPref,
+              backgroundColor: '#FF9F40',
+              borderWidth: 1
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              title: {
+                display: true,
+                text: 'Horários Preferidos para Comunicação'
+              },
+              legend: {
+                display: false
+              }
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                title: {
+                  display: true,
+                  text: 'Número de Usuários'
+                }
+              }
+            }
           }
         });
       }
+      
+      // Carregar dados iniciais
+      loadUsuarios();
+      loadConteudos();
+      loadKanbanData();
+      loadDashboards();
+      loadPerfisUsuarios();
+      
+      // Configurar eventos de atualização
+      $('#refreshUsuarios').click(loadUsuarios);
+      $('#refreshConteudos').click(loadConteudos);
+      $('#refreshKanban').click(loadKanbanData);
+      $('#refreshDashboards').click(loadDashboards);
+      $('#refreshPerfis').click(loadPerfisUsuarios);
+      
+      // Tratar cliques em abas
+      $('#adminTabs a').on('click', function (e) {
+        e.preventDefault();
+        $(this).tab('show');
+      });
     });
   </script>
 </body>

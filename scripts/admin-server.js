@@ -48,6 +48,7 @@ console.log(`Tabela de conteúdos: ${CONTEUDOS_TABLE}`);
 app.use(express.json());
 app.use(cors());
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(__dirname)); // Serve arquivos da pasta atual
 app.use(bodyParser.json());
 
 // Servir o arquivo HTML administrativo
@@ -232,6 +233,148 @@ app.get('/api/usuarios', async (req, res) => {
     });
     }
 });
+
+// Endpoint para análise de perfis de usuários
+app.get('/api/usuarios/perfis', async (req, res) => {
+  try {
+    console.log(`Solicitação recebida para análise de perfis de usuários da tabela ${USUARIOS_TABLE}`);
+    const startTime = Date.now();
+    
+    // Obter dados dos usuários
+    const params = {
+      TableName: USUARIOS_TABLE,
+      Limit: 1000
+    };
+    
+    let result;
+    try {
+      result = await dynamoDB.scan(params).promise();
+      const endTime = Date.now();
+      console.log(`✅ Consulta bem-sucedida: ${result.Items?.length || 0} usuários encontrados (${endTime - startTime}ms)`);
+    } catch (dbError) {
+      console.error('❌ Erro na consulta ao DynamoDB:', dbError);
+      return res.status(500).json({
+        error: `Erro ao consultar o DynamoDB: ${dbError.message}`,
+        code: dbError.code,
+        table: USUARIOS_TABLE
+      });
+    }
+    
+    // Processar dados para estatísticas de preferências
+    const estatisticas = analisarPerfilUsuarios(result.Items);
+    
+    res.json({
+      count: result.Items.length,
+      timestamp: new Date().toISOString(),
+      estatisticas: estatisticas
+    });
+    
+  } catch (error) {
+    console.error('❌ Erro ao processar solicitação /api/usuarios/perfis:', error);
+    res.status(500).json({
+      error: `Erro ao processar solicitação: ${error.message}`,
+      table: USUARIOS_TABLE
+    });
+  }
+});
+
+// Função para analisar perfis de usuários e gerar estatísticas
+function analisarPerfilUsuarios(usuarios) {
+  // Verificar se há dados para analisar
+  if (!usuarios || usuarios.length === 0) {
+    return {
+      erro: "Sem dados para análise"
+    };
+  }
+  
+  // Inicializar objetos para armazenar contagens
+  const interessesPrimarios = {};
+  const freqMensagens = {};
+  const tiposConteudo = {};
+  const formatosConteudo = {};
+  const cargos = {};
+  const tamanhoEmpresas = {};
+  const desafios = {};
+  const horariosPref = Array(24).fill(0);
+  
+  // Analisar cada usuário
+  usuarios.forEach(usuario => {
+    // Interesses primários
+    if (usuario.preferences && usuario.preferences.primaryInterest) {
+      const interesse = usuario.preferences.primaryInterest;
+      interessesPrimarios[interesse] = (interessesPrimarios[interesse] || 0) + 1;
+    }
+    
+    // Frequência de mensagens
+    if (usuario.preferences && usuario.preferences.messageFrequency) {
+      const freq = usuario.preferences.messageFrequency;
+      freqMensagens[freq] = (freqMensagens[freq] || 0) + 1;
+    }
+    
+    // Tipos de conteúdo preferidos
+    if (usuario.preferences && usuario.preferences.contentTypes) {
+      usuario.preferences.contentTypes.forEach(tipo => {
+        tiposConteudo[tipo] = (tiposConteudo[tipo] || 0) + 1;
+      });
+    }
+    
+    // Formato de conteúdo preferido
+    if (usuario.preferences && usuario.preferences.preferredContentFormat) {
+      const formato = usuario.preferences.preferredContentFormat;
+      formatosConteudo[formato] = (formatosConteudo[formato] || 0) + 1;
+    }
+    
+    // Cargos/funções
+    if (usuario.profile && usuario.profile.role) {
+      const cargo = usuario.profile.role;
+      cargos[cargo] = (cargos[cargo] || 0) + 1;
+    }
+    
+    // Tamanho da empresa
+    if (usuario.profile && usuario.profile.companySize) {
+      const tamanho = usuario.profile.companySize;
+      tamanhoEmpresas[tamanho] = (tamanhoEmpresas[tamanho] || 0) + 1;
+    }
+    
+    // Desafios relatados
+    if (usuario.profile && usuario.profile.challenges) {
+      usuario.profile.challenges.forEach(desafio => {
+        desafios[desafio] = (desafios[desafio] || 0) + 1;
+      });
+    }
+    
+    // Horários preferidos
+    if (usuario.preferences && usuario.preferences.preferredTime) {
+      const inicio = usuario.preferences.preferredTime.start;
+      const fim = usuario.preferences.preferredTime.end;
+      
+      if (inicio && fim) {
+        // Extrair as horas (assumindo formato HH:MM)
+        const horaInicio = parseInt(inicio.split(':')[0]);
+        const horaFim = parseInt(fim.split(':')[0]);
+        
+        // Incrementar todas as horas dentro do intervalo
+        for (let h = horaInicio; h <= horaFim; h++) {
+          if (h >= 0 && h < 24) {
+            horariosPref[h]++;
+          }
+        }
+      }
+    }
+  });
+  
+  // Retornar estatísticas compiladas
+  return {
+    interessesPrimarios,
+    freqMensagens,
+    tiposConteudo,
+    formatosConteudo,
+    cargos,
+    tamanhoEmpresas,
+    desafios,
+    horariosPref
+  };
+}
 
 // Endpoint para listar conteúdos
 app.get('/api/conteudos', async (req, res) => {
