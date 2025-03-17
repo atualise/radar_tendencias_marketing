@@ -38,8 +38,8 @@ AWS.config.update(dynamoConfig);
 const dynamoDB = new AWS.DynamoDB.DocumentClient();
 
 // Nomes das tabelas em produção
-const USUARIOS_TABLE = process?.env?.USUARIOS_TABLE || 'antena-app-Users-prod'; // Ajuste para o nome real em produção
-const CONTEUDOS_TABLE = process?.env?.CONTEUDOS_TABLE || 'antena-app-Contents-prod'; // Ajuste para o nome real em produção
+const USUARIOS_TABLE = process?.env?.USUARIOS_TABLE || 'antena-app-Users-prod';
+const CONTEUDOS_TABLE = process?.env?.CONTEUDOS_TABLE || 'antena-app-Contents-prod';
 
 console.log(`Tabela de usuários: ${USUARIOS_TABLE}`);
 console.log(`Tabela de conteúdos: ${CONTEUDOS_TABLE}`);
@@ -48,7 +48,7 @@ console.log(`Tabela de conteúdos: ${CONTEUDOS_TABLE}`);
 app.use(express.json());
 app.use(cors());
 app.use(express.static(path.join(__dirname, 'public')));
-app.use(express.static(__dirname)); // Serve arquivos da pasta atual
+app.use(express.static(__dirname));
 app.use(bodyParser.json());
 
 // Servir o arquivo HTML administrativo
@@ -56,9 +56,9 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'admin-server.html'));
 });
 
-// ======== FUNÇÕES DE VALIDAÇÃO ========
+// ======== FUNÇÕES AUXILIARES ========
 
-// Verificar conexão com DynamoDB e tabelas
+// Função para validar conexão AWS
 async function validateAwsConnection() {
   console.log('Verificando conexão com AWS e tabelas do DynamoDB...');
   
@@ -73,8 +73,8 @@ async function validateAwsConnection() {
     if (!allTables.includes(USUARIOS_TABLE)) {
       console.error(`❌ ERRO: Tabela de usuários '${USUARIOS_TABLE}' não encontrada.`);
       console.log('Tabelas disponíveis:', allTables.join(', '));
-    return false;
-  }
+      return false;
+    }
     
     if (!allTables.includes(CONTEUDOS_TABLE)) {
       console.error(`❌ ERRO: Tabela de conteúdos '${CONTEUDOS_TABLE}' não encontrada.`);
@@ -87,17 +87,17 @@ async function validateAwsConnection() {
     // Teste de leitura na tabela de usuários
     try {
       const userTest = await dynamoDB.scan({
-          TableName: USUARIOS_TABLE,
+        TableName: USUARIOS_TABLE,
         Limit: 1
-        }).promise();
-        
+      }).promise();
+      
       console.log(`✅ Leitura de tabela de usuários testada. ${userTest.Items.length} item(s) lido(s).`);
       
       if (userTest.Items.length > 0) {
         const sampleUser = userTest.Items[0];
         const idField = sampleUser.id ? 'id' : 
-                        sampleUser.usuarioId ? 'usuarioId' : 
-                        sampleUser.telefone ? 'telefone' : null;
+                       sampleUser.usuarioId ? 'usuarioId' : 
+                       sampleUser.telefone ? 'telefone' : null;
         
         if (!idField) {
           console.warn('⚠️ AVISO: Não foi possível determinar o campo de ID do usuário. Verifique a estrutura da tabela.');
@@ -111,7 +111,7 @@ async function validateAwsConnection() {
     }
     
     return true;
-    } catch (error) {
+  } catch (error) {
     console.error('❌ ERRO ao verificar conexão com AWS:', error.message);
     if (error.code === 'CredentialsError' || error.code === 'UnrecognizedClientException') {
       console.error(`
@@ -132,296 +132,35 @@ async function validateAwsConnection() {
   }
 }
 
-// ======== ENDPOINTS DA API ========
-
-// Endpoint de verificação de saúde do sistema
-app.get('/api/health', async (req, res) => {
+// Função para detectar chave primária da tabela
+async function detectPrimaryKey(tableName) {
   try {
-    const healthStatus = {
-      status: 'online',
-      timestamp: new Date().toISOString(),
-      aws: await validateAwsConnectionStatus(),
-      environment: {
-        region: awsRegion,
-        usuariosTable: USUARIOS_TABLE,
-        conteudosTable: CONTEUDOS_TABLE
-      }
-    };
-    
-    res.json(healthStatus);
-  } catch (error) {
-    console.error('Erro ao verificar saúde do servidor:', error);
-    res.status(500).json({
-      status: 'error',
-      error: error.message,
-      timestamp: new Date().toISOString()
-    });
-  }
-});
+    const result = await dynamoDB.scan({
+      TableName: tableName,
+      Limit: 1
+    }).promise();
 
-// Função rápida para validar conexão AWS
-async function validateAwsConnectionStatus() {
-  try {
-    // Tentar listar tabelas para validar conexão
-    const result = await new AWS.DynamoDB().listTables().promise();
-    
-    return {
-      connected: true,
-      tablesFound: result.TableNames.length,
-      usuariosTableExists: result.TableNames.includes(USUARIOS_TABLE),
-      conteudosTableExists: result.TableNames.includes(CONTEUDOS_TABLE)
-    };
-  } catch (error) {
-    return {
-      connected: false,
-      error: error.message
-    };
-  }
-}
-
-// Endpoint para listar usuários
-app.get('/api/usuarios', async (req, res) => {
-  try {
-    console.log(`Solicitação recebida para listar usuários da tabela ${USUARIOS_TABLE}`);
-    const startTime = Date.now();
-    
-    // Acesso ao DynamoDB em produção
-    const params = {
-      TableName: USUARIOS_TABLE,
-      Limit: 1000
-    };
-    
-    let result;
-    try {
-      result = await dynamoDB.scan(params).promise();
-      const endTime = Date.now();
-      console.log(`✅ Consulta bem-sucedida: ${result.Items?.length || 0} usuários encontrados (${endTime - startTime}ms)`);
-    } catch (dbError) {
-      console.error('❌ Erro na consulta ao DynamoDB:', dbError);
-      return res.status(500).json({
-        error: `Erro ao consultar o DynamoDB: ${dbError.message}`,
-        code: dbError.code,
-        table: USUARIOS_TABLE,
-        region: dynamoConfig.region,
-        params: params
-      });
-    }
-    
-    // Contar usuários ativos (verificando diversos campos possíveis)
-    const usuariosAtivos = result.Items.filter(u => 
-      u.status === 'ativo' || u.ativo === true || 
-      u.situacao === 'ativo' || u.active === true ||
-      (typeof u.status === 'number' && u.status === 1)
-    ).length;
-    
-            res.json({
-      count: result.Items.length,
-      ativos: usuariosAtivos,
-      table: params.TableName,
-      region: dynamoConfig.region,
-      timestamp: new Date().toISOString(),
-      usuarios: result.Items
-    });
-    
-  } catch (error) {
-    console.error('❌ Erro ao processar solicitação /api/usuarios:', error);
-    res.status(500).json({
-      error: `Erro ao processar solicitação: ${error.message}`,
-      table: USUARIOS_TABLE,
-      region: dynamoConfig.region,
-      stack: error.stack
-    });
-    }
-});
-
-// Endpoint para análise de perfis de usuários
-app.get('/api/usuarios/perfis', async (req, res) => {
-  try {
-    console.log(`Solicitação recebida para análise de perfis de usuários da tabela ${USUARIOS_TABLE}`);
-    const startTime = Date.now();
-    
-    // Obter dados dos usuários
-    const params = {
-      TableName: USUARIOS_TABLE,
-      Limit: 1000
-    };
-    
-    let result;
-    try {
-      result = await dynamoDB.scan(params).promise();
-      const endTime = Date.now();
-      console.log(`✅ Consulta bem-sucedida: ${result.Items?.length || 0} usuários encontrados (${endTime - startTime}ms)`);
-    } catch (dbError) {
-      console.error('❌ Erro na consulta ao DynamoDB:', dbError);
-      return res.status(500).json({
-        error: `Erro ao consultar o DynamoDB: ${dbError.message}`,
-        code: dbError.code,
-        table: USUARIOS_TABLE
-      });
-    }
-    
-    // Processar dados para estatísticas de preferências
-    const estatisticas = analisarPerfilUsuarios(result.Items);
-    
-    res.json({
-      count: result.Items.length,
-      timestamp: new Date().toISOString(),
-      estatisticas: estatisticas
-    });
-    
-  } catch (error) {
-    console.error('❌ Erro ao processar solicitação /api/usuarios/perfis:', error);
-    res.status(500).json({
-      error: `Erro ao processar solicitação: ${error.message}`,
-      table: USUARIOS_TABLE
-    });
-  }
-});
-
-// Função para analisar perfis de usuários e gerar estatísticas
-function analisarPerfilUsuarios(usuarios) {
-  // Verificar se há dados para analisar
-  if (!usuarios || usuarios.length === 0) {
-    return {
-      erro: "Sem dados para análise"
-    };
-  }
-  
-  // Inicializar objetos para armazenar contagens
-  const interessesPrimarios = {};
-  const freqMensagens = {};
-  const tiposConteudo = {};
-  const formatosConteudo = {};
-  const cargos = {};
-  const tamanhoEmpresas = {};
-  const desafios = {};
-  const horariosPref = Array(24).fill(0);
-  
-  // Analisar cada usuário
-  usuarios.forEach(usuario => {
-    // Interesses primários
-    if (usuario.preferences && usuario.preferences.primaryInterest) {
-      const interesse = usuario.preferences.primaryInterest;
-      interessesPrimarios[interesse] = (interessesPrimarios[interesse] || 0) + 1;
-    }
-    
-    // Frequência de mensagens
-    if (usuario.preferences && usuario.preferences.messageFrequency) {
-      const freq = usuario.preferences.messageFrequency;
-      freqMensagens[freq] = (freqMensagens[freq] || 0) + 1;
-    }
-    
-    // Tipos de conteúdo preferidos
-    if (usuario.preferences && usuario.preferences.contentTypes) {
-      usuario.preferences.contentTypes.forEach(tipo => {
-        tiposConteudo[tipo] = (tiposConteudo[tipo] || 0) + 1;
-      });
-    }
-    
-    // Formato de conteúdo preferido
-    if (usuario.preferences && usuario.preferences.preferredContentFormat) {
-      const formato = usuario.preferences.preferredContentFormat;
-      formatosConteudo[formato] = (formatosConteudo[formato] || 0) + 1;
-    }
-    
-    // Cargos/funções
-    if (usuario.profile && usuario.profile.role) {
-      const cargo = usuario.profile.role;
-      cargos[cargo] = (cargos[cargo] || 0) + 1;
-    }
-    
-    // Tamanho da empresa
-    if (usuario.profile && usuario.profile.companySize) {
-      const tamanho = usuario.profile.companySize;
-      tamanhoEmpresas[tamanho] = (tamanhoEmpresas[tamanho] || 0) + 1;
-    }
-    
-    // Desafios relatados
-    if (usuario.profile && usuario.profile.challenges) {
-      usuario.profile.challenges.forEach(desafio => {
-        desafios[desafio] = (desafios[desafio] || 0) + 1;
-      });
-    }
-    
-    // Horários preferidos
-    if (usuario.preferences && usuario.preferences.preferredTime) {
-      const inicio = usuario.preferences.preferredTime.start;
-      const fim = usuario.preferences.preferredTime.end;
+    if (result.Items && result.Items.length > 0) {
+      const item = result.Items[0];
+      const possibleKeys = ['id', 'usuarioId', 'userId', 'telefone', 'phoneNumber', 'whatsapp', '_id', 'uid'];
       
-      if (inicio && fim) {
-        // Extrair as horas (assumindo formato HH:MM)
-        const horaInicio = parseInt(inicio.split(':')[0]);
-        const horaFim = parseInt(fim.split(':')[0]);
-        
-        // Incrementar todas as horas dentro do intervalo
-        for (let h = horaInicio; h <= horaFim; h++) {
-          if (h >= 0 && h < 24) {
-            horariosPref[h]++;
-          }
+      for (const key of possibleKeys) {
+        if (item[key]) {
+          return key;
         }
       }
     }
-  });
-  
-  // Retornar estatísticas compiladas
-  return {
-    interessesPrimarios,
-    freqMensagens,
-    tiposConteudo,
-    formatosConteudo,
-    cargos,
-    tamanhoEmpresas,
-    desafios,
-    horariosPref
-  };
+    return null;
+  } catch (error) {
+    console.error(`Erro ao detectar chave primária da tabela ${tableName}:`, error);
+    return null;
+  }
 }
 
-// Endpoint para listar conteúdos
-app.get('/api/conteudos', async (req, res) => {
-  try {
-    console.log(`Solicitação recebida para listar conteúdos da tabela ${CONTEUDOS_TABLE}`);
-    const startTime = Date.now();
-    
-    // Acesso ao DynamoDB
-        const params = {
-      TableName: CONTEUDOS_TABLE,
-      Limit: 1000
-    };
-    
-    let result;
-    try {
-      result = await dynamoDB.scan(params).promise();
-      const endTime = Date.now();
-      console.log(`✅ Consulta bem-sucedida: ${result.Items?.length || 0} conteúdos encontrados (${endTime - startTime}ms)`);
-    } catch (dbError) {
-      console.error('❌ Erro na consulta ao DynamoDB:', dbError);
-      return res.status(500).json({
-        error: `Erro ao consultar o DynamoDB: ${dbError.message}`,
-        code: dbError.code,
-        table: CONTEUDOS_TABLE,
-        region: dynamoConfig.region
-      });
-    }
-    
-    res.json({
-      count: result.Items.length,
-      table: params.TableName,
-      region: dynamoConfig.region,
-      timestamp: new Date().toISOString(),
-      conteudos: result.Items
-    });
-    
-    } catch (error) {
-    console.error('❌ Erro ao processar solicitação /api/conteudos:', error);
-    res.status(500).json({
-      error: `Erro ao processar solicitação: ${error.message}`,
-      table: CONTEUDOS_TABLE
-    });
-  }
-});
-
-// Função para extrair UUID puro de um ID com prefixo
+// Função para extrair UUID
 function extractUUID(id) {
+  if (!id) return null;
+  
   // Verificar se o ID segue o padrão de um UUID com prefixo
   const uuidRegex = /^[a-z]+([\da-f]{8}-?[\da-f]{4}-?[\da-f]{4}-?[\da-f]{4}-?[\da-f]{12})$/i;
   const match = id.match(uuidRegex);
@@ -445,13 +184,1035 @@ function extractUUID(id) {
   return null;
 }
 
-// Endpoint para remover um usuário
+// Função para registrar mudança de status
+async function logStatusChange(userId, previousStatus, newStatus, keyObj) {
+  const timestamp = new Date().toISOString();
+  console.log(`[${timestamp}] Alteração de status para usuário ${userId}:`);
+  console.log(`Status anterior: ${previousStatus}`);
+  console.log(`Novo status: ${newStatus}`);
+  console.log('Chaves utilizadas:', keyObj);
+}
+
+// Função para explorar a estrutura da tabela
+async function exploreTableStructure() {
+  try {
+    console.log('🔍 Explorando estrutura da tabela DynamoDB:', USUARIOS_TABLE);
+    
+    const dynamoDBStandard = new AWS.DynamoDB();
+    const tableData = await dynamoDBStandard.describeTable({
+      TableName: USUARIOS_TABLE
+    }).promise();
+    
+    if (tableData && tableData.Table) {
+      const keySchema = tableData.Table.KeySchema;
+      const attributeDefs = tableData.Table.AttributeDefinitions;
+      
+      console.log('📊 Esquema de chave da tabela:');
+      keySchema.forEach(key => {
+        console.log(`- ${key.AttributeName} (${key.KeyType === 'HASH' ? 'Partition Key' : 'Sort Key'})`);
+      });
+      
+      console.log('📝 Definições de atributos:');
+      attributeDefs.forEach(attr => {
+        console.log(`- ${attr.AttributeName}: ${attr.AttributeType}`);
+      });
+      
+      const scanResult = await dynamoDB.scan({
+        TableName: USUARIOS_TABLE,
+        Limit: 1
+      }).promise();
+      
+      if (scanResult.Items && scanResult.Items.length > 0) {
+        const sampleItem = scanResult.Items[0];
+        console.log('📋 Exemplo de item na tabela:');
+        console.log(JSON.stringify(sampleItem, null, 2));
+        
+        const partitionKey = keySchema.find(k => k.KeyType === 'HASH')?.AttributeName;
+        const sortKey = keySchema.find(k => k.KeyType === 'RANGE')?.AttributeName;
+        
+        if (partitionKey && sampleItem[partitionKey]) {
+          console.log(`✅ Chave de partição '${partitionKey}' encontrada no item com valor: ${sampleItem[partitionKey]}`);
+        } else if (partitionKey) {
+          console.log(`⚠️ Chave de partição '${partitionKey}' NÃO encontrada no item exemplo!`);
+        }
+        
+        if (sortKey && sampleItem[sortKey]) {
+          console.log(`✅ Chave de ordenação '${sortKey}' encontrada no item com valor: ${sampleItem[sortKey]}`);
+        } else if (sortKey) {
+          console.log(`⚠️ Chave de ordenação '${sortKey}' NÃO encontrada no item exemplo!`);
+        }
+        
+        const possibleIdFields = ['id', 'usuarioId', 'userId', 'telefone', 'phoneNumber', 'whatsapp', '_id', 'uid'];
+        console.log('🔑 Campos potenciais para ID encontrados no item:');
+        possibleIdFields.forEach(field => {
+          if (sampleItem[field]) {
+            console.log(`- ${field}: ${sampleItem[field]}`);
+          }
+        });
+      }
+    }
+  } catch (error) {
+    console.error('❌ Erro ao explorar estrutura da tabela:', error);
+  }
+}
+
+// ======== ENDPOINTS DA API ========
+
+// Endpoint de verificação de saúde
+app.get('/api/health', async (req, res) => {
+  try {
+    const healthStatus = {
+      status: 'online',
+      timestamp: new Date().toISOString(),
+      aws: await validateAwsConnection(),
+      environment: {
+        region: awsRegion,
+        usuariosTable: USUARIOS_TABLE,
+        conteudosTable: CONTEUDOS_TABLE
+      }
+    };
+    res.json(healthStatus);
+  } catch (error) {
+    console.error('Erro ao verificar saúde do servidor:', error);
+    res.status(500).json({
+      status: 'error',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Endpoint para listar usuários
+app.get('/api/usuarios', async (req, res) => {
+  try {
+    console.log(`Solicitação recebida para listar usuários da tabela ${USUARIOS_TABLE}`);
+    const startTime = Date.now();
+    
+    const params = {
+      TableName: USUARIOS_TABLE,
+      Limit: 1000
+    };
+    
+    const result = await dynamoDB.scan(params).promise();
+    const endTime = Date.now();
+    
+    const usuariosAtivos = result.Items.filter(u => 
+      u.status === 'ativo' || u.ativo === true || 
+      u.situacao === 'ativo' || u.active === true ||
+      (typeof u.status === 'number' && u.status === 1)
+    ).length;
+    
+    res.json({
+      count: result.Items.length,
+      ativos: usuariosAtivos,
+      table: params.TableName,
+      region: dynamoConfig.region,
+      timestamp: new Date().toISOString(),
+      usuarios: result.Items
+    });
+    
+  } catch (error) {
+    console.error('❌ Erro ao processar solicitação /api/usuarios:', error);
+    res.status(500).json({
+      error: `Erro ao processar solicitação: ${error.message}`,
+      table: USUARIOS_TABLE,
+      region: dynamoConfig.region,
+      stack: error.stack
+    });
+  }
+});
+
+// IMPORTANTE: Endpoint específico para perfis (deve vir antes do endpoint com parâmetro :id)
+app.get('/api/usuarios/perfis', async (req, res) => {
+  try {
+    console.log('Solicitação recebida para obter perfis de usuários');
+    
+    const params = {
+      TableName: USUARIOS_TABLE,
+      Limit: 1000
+    };
+    
+    const result = await dynamoDB.scan(params).promise();
+    
+    // Verificar se temos resultados
+    if (!result || !result.Items || result.Items.length === 0) {
+      console.log('⚠️ Nenhum usuário encontrado na tabela');
+      return res.json({
+        count: 0,
+        timestamp: new Date().toISOString(),
+        perfis: [],
+        message: 'Nenhum usuário encontrado'
+      });
+    }
+    
+    console.log(`✅ Encontrados ${result.Items.length} usuários`);
+    
+    // Extrair apenas informações de perfil básicas para cada usuário
+    const perfis = result.Items.map(usuario => {
+      // Garantir que teremos um ID
+      const usuarioId = usuario.id || usuario.usuarioId || usuario.userId || 
+                       usuario.telefone || usuario.phoneNumber || 
+                       usuario._id || usuario.uid || 'sem-id';
+      
+      // Extrair campos relevantes para o perfil
+      const { 
+        nome, email, telefone, phoneNumber, 
+        status, ativo, estagio, dataCriacao, dataAtualizacao,
+        perfil, tipo, papel, role, name
+      } = usuario;
+      
+      // Criar objeto de perfil com valores padrão para campos que podem estar ausentes
+      return {
+        id: usuarioId,
+        nome: nome || name || 'Sem nome',
+        email: email || 'Não informado',
+        telefone: telefone || phoneNumber || 'Não informado',
+        status: status || (ativo ? 'ativo' : 'inativo') || 'desconhecido',
+        estagio: estagio || 'novo',
+        dataCriacao: dataCriacao || dataAtualizacao || new Date().toISOString(),
+        dataAtualizacao: dataAtualizacao || dataCriacao || new Date().toISOString(),
+        perfil: perfil || {},
+        tipo: tipo || 'usuário',
+        papel: papel || role || 'membro'
+      };
+    });
+    
+    // Garantir que todos os perfis tenham os campos necessários
+    const perfisValidados = perfis.filter(p => p && p.id !== 'sem-id');
+    
+    console.log(`✅ Retornando ${perfisValidados.length} perfis válidos`);
+    
+    res.json({
+      count: perfisValidados.length,
+      timestamp: new Date().toISOString(),
+      perfis: perfisValidados,
+      usuarios: result.Items, // Incluir dados originais para depuração
+      status: 'success'
+    });
+    
+  } catch (error) {
+    console.error('❌ Erro ao processar solicitação de perfis:', error);
+    
+    // Responder com erro mais detalhado
+    res.status(500).json({
+      error: `Erro ao processar perfis: ${error.message}`,
+      timestamp: new Date().toISOString(),
+      perfis: [],
+      count: 0,
+      status: 'error',
+      errorDetails: {
+        message: error.message,
+        code: error.code || 'UNKNOWN_ERROR',
+        stack: error.stack
+      }
+    });
+  }
+});
+
+// Endpoint específico para análise estatística de perfis
+app.get('/api/usuarios/estatisticas', async (req, res) => {
+  try {
+    console.log('Solicitação recebida para análise estatística de perfis de usuários');
+    console.log('Endpoint: /api/usuarios/estatisticas - Iniciando processamento');
+    
+    // Log do ambiente
+    console.log(`Ambiente de execução: Tabela=${USUARIOS_TABLE}, Região=${awsRegion}`);
+    
+    const params = {
+      TableName: USUARIOS_TABLE,
+      Limit: 1000
+    };
+    
+    console.log('Iniciando scan da tabela de usuários...');
+    const result = await dynamoDB.scan(params).promise();
+    console.log(`Scan concluído: ${result && result.Items ? result.Items.length : 0} itens encontrados`);
+    
+    // Verificar se temos resultados
+    if (!result || !result.Items || result.Items.length === 0) {
+      console.log('⚠️ Nenhum usuário encontrado na tabela para análise estatística');
+      return res.json({
+        status: 'warning',
+        message: 'Nenhum dado de usuário disponível para análise',
+        timestamp: new Date().toISOString(),
+        estatisticas: {}
+      });
+    }
+    
+    console.log(`✅ Analisando ${result.Items.length} usuários para estatísticas`);
+    
+    const usuarios = result.Items;
+    
+    // Contador de status
+    const statusCount = {};
+    usuarios.forEach(usuario => {
+      let status = usuario.status;
+      if (usuario.ativo === true && !status) status = 'ativo';
+      if (usuario.ativo === false && !status) status = 'inativo';
+      status = status || 'desconhecido';
+      
+      statusCount[status] = (statusCount[status] || 0) + 1;
+    });
+    
+    // Contador de estágios
+    const estagioCount = {};
+    usuarios.forEach(usuario => {
+      const estagio = usuario.estagio || 'sem-estagio';
+      estagioCount[estagio] = (estagioCount[estagio] || 0) + 1;
+    });
+    
+    // Contador por data de cadastro (mês)
+    const cadastrosPorMes = {};
+    usuarios.forEach(usuario => {
+      if (usuario.dataCriacao) {
+        const mes = usuario.dataCriacao.substring(0, 7); // YYYY-MM
+        cadastrosPorMes[mes] = (cadastrosPorMes[mes] || 0) + 1;
+      }
+    });
+    
+    // Contador por tipo de perfil
+    const tipoPerfilCount = {};
+    usuarios.forEach(usuario => {
+      const tipo = usuario.tipo || usuario.perfil?.tipo || 'padrao';
+      tipoPerfilCount[tipo] = (tipoPerfilCount[tipo] || 0) + 1;
+    });
+    
+    // Mapear campos mais comuns
+    const camposComuns = {};
+    usuarios.forEach(usuario => {
+      Object.keys(usuario).forEach(campo => {
+        camposComuns[campo] = (camposComuns[campo] || 0) + 1;
+      });
+    });
+    
+    // Campos mais frequentes (top 10)
+    const camposFrequentes = Object.entries(camposComuns)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .reduce((obj, [key, value]) => {
+        obj[key] = value;
+        return obj;
+      }, {});
+    
+    const estatisticas = {
+      totalUsuarios: usuarios.length,
+      porStatus: statusCount,
+      porEstagio: estagioCount,
+      cadastrosPorMes,
+      tiposPerfil: tipoPerfilCount,
+      camposFrequentes,
+      ultimaAtualizacao: new Date().toISOString()
+    };
+    
+    console.log(`✅ Estatísticas geradas com sucesso: ${Object.keys(estatisticas).length} categorias`);
+    console.log('Preparando resposta JSON...');
+    
+    // Adicionando dados simplificados para debug
+    const dadosSimplificados = {
+      total: usuarios.length,
+      statusCount,
+      estagioCount
+    };
+    
+    console.log('Dados simplificados:', JSON.stringify(dadosSimplificados));
+    
+    return res.json({
+      status: 'success',
+      estatisticas,
+      message: 'Análise estatística concluída',
+      timestamp: new Date().toISOString(),
+      debug: dadosSimplificados
+    });
+    
+  } catch (error) {
+    console.error('❌ Erro ao gerar estatísticas de perfis:', error);
+    console.error('Stack trace:', error.stack);
+    
+    // Responder com erro mais detalhado
+    return res.status(500).json({
+      status: 'error',
+      error: `Erro ao gerar estatísticas: ${error.message}`,
+      message: 'Nenhum dado de usuário disponível para análise: ' + (error.code || 'Erro desconhecido'),
+      timestamp: new Date().toISOString(),
+      estatisticas: {},
+      errorStack: error.stack
+    });
+  }
+});
+
+// Endpoint para obter perfil de usuário específico
+app.get('/api/usuarios/:id', async (req, res) => {
+  const id = req.params.id;
+  
+  try {
+    console.log(`Solicitação recebida para obter perfil do usuário ${id}`);
+    
+    // Tentar diferentes variações do ID
+    let idVariations = [id];
+    
+    // Se o ID começa com algum prefixo conhecido, adicionar versão sem prefixo
+    const knownPrefixes = ['usr', 'user', 'u-', 'user-', 'id-'];
+    for (const prefix of knownPrefixes) {
+      if (id.startsWith(prefix)) {
+        idVariations.push(id.substring(prefix.length));
+      }
+    }
+
+    // Se o formato parece ser UUID com prefixo, tentar remover o prefixo
+    if (/^[a-z]+[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$/i.test(id)) {
+      const uuidPart = id.replace(/^[a-z]+/i, '');
+      idVariations.push(uuidPart);
+      
+      const extractedUUID = extractUUID(id);
+      if (extractedUUID && !idVariations.includes(extractedUUID)) {
+        idVariations.push(extractedUUID);
+      }
+    }
+    
+    // Possíveis chaves primárias
+    const possibleKeys = ['id', 'usuarioId', 'userId', 'telefone', 'phoneNumber', 'whatsapp', '_id', 'uid'];
+    
+    // Tentar cada combinação de ID e chave primária
+    for (const varId of idVariations) {
+      for (const key of possibleKeys) {
+        try {
+          const params = {
+            TableName: USUARIOS_TABLE,
+            Key: { [key]: varId }
+          };
+          
+          const result = await dynamoDB.get(params).promise();
+          
+          if (result.Item) {
+            // Adicionar informações extras ao perfil
+            const perfil = {
+              ...result.Item,
+              _meta: {
+                tabela: USUARIOS_TABLE,
+                chavePrimaria: key,
+                idUtilizado: varId,
+                idOriginal: id,
+                timestamp: new Date().toISOString()
+              }
+            };
+            
+            // Calcular há quanto tempo o usuário foi criado/modificado
+            if (perfil.dataCriacao) {
+              const dataRegistro = new Date(perfil.dataCriacao);
+              const agora = new Date();
+              const diasDesdeRegistro = Math.floor((agora - dataRegistro) / (1000 * 60 * 60 * 24));
+              perfil._meta.diasDesdeRegistro = diasDesdeRegistro;
+            }
+            
+            console.log(`✅ Usuário ${id} encontrado usando chave ${key}=${varId}`);
+            return res.json({ perfil, status: 'success' });
+          }
+        } catch (err) {
+          // Continuar tentando com outras combinações
+          console.log(`Tentativa com ${key}=${varId} falhou:`, err.message);
+        }
+      }
+    }
+    
+    // Se chegou aqui, não encontrou o usuário
+    console.log(`❌ Usuário ${id} não encontrado após tentar ${idVariations.length} variações de ID`);
+    return res.status(404).json({ 
+      error: 'Usuário não encontrado',
+      id: id,
+      message: 'Não foi possível encontrar o usuário com o ID fornecido em nenhuma das chaves possíveis',
+      variacoesTentadas: idVariations,
+      status: 'error'
+    });
+    
+  } catch (error) {
+    console.error(`❌ Erro ao buscar perfil do usuário ${id}:`, error);
+    res.status(500).json({
+      error: `Erro ao buscar perfil: ${error.message}`,
+      id: id,
+      stack: error.stack,
+      status: 'error'
+    });
+  }
+});
+
+// Endpoint para listar conteúdos
+app.get('/api/conteudos', async (req, res) => {
+  try {
+    console.log(`Solicitação recebida para listar conteúdos da tabela ${CONTEUDOS_TABLE}`);
+    const startTime = Date.now();
+    
+    const params = {
+      TableName: CONTEUDOS_TABLE,
+      Limit: 1000
+    };
+    
+    const result = await dynamoDB.scan(params).promise();
+    const endTime = Date.now();
+    
+    res.json({
+      count: result.Items.length,
+      table: params.TableName,
+      region: dynamoConfig.region,
+      timestamp: new Date().toISOString(),
+      conteudos: result.Items,
+      status: 'success'
+    });
+    
+  } catch (error) {
+    console.error('❌ Erro ao processar solicitação /api/conteudos:', error);
+    res.status(500).json({
+      error: `Erro ao processar solicitação: ${error.message}`,
+      table: CONTEUDOS_TABLE,
+      status: 'error'
+    });
+  }
+});
+
+// Endpoints específicos de conteúdos (devem vir antes do endpoint com :id)
+app.get('/api/conteudos/pesquisa/:termo', async (req, res) => {
+  const termo = req.params.termo;
+  
+  if (!termo || termo.length < 3) {
+    return res.status(400).json({
+      error: 'Termo de pesquisa muito curto',
+      message: 'Forneça um termo de pesquisa com pelo menos 3 caracteres',
+      status: 'error'
+    });
+  }
+  
+  try {
+    console.log(`Pesquisando conteúdos com termo: "${termo}"`);
+    
+    const params = {
+      TableName: CONTEUDOS_TABLE,
+      FilterExpression: 'contains(#titulo, :termo) OR contains(#descricao, :termo) OR contains(#tags, :termo)',
+      ExpressionAttributeNames: {
+        '#titulo': 'titulo',
+        '#descricao': 'descricao',
+        '#tags': 'tags'
+      },
+      ExpressionAttributeValues: {
+        ':termo': termo.toLowerCase()
+      }
+    };
+    
+    const result = await dynamoDB.scan(params).promise();
+    
+    console.log(`✅ Pesquisa concluída. ${result.Items.length} resultados encontrados.`);
+    res.json({
+      count: result.Items.length,
+      termo,
+      resultados: result.Items,
+      status: 'success'
+    });
+    
+  } catch (error) {
+    console.error('❌ Erro ao pesquisar conteúdos:', error);
+    res.status(500).json({
+      error: `Erro ao pesquisar conteúdos: ${error.message}`,
+      termo,
+      status: 'error'
+    });
+  }
+});
+
+// Endpoint para estatísticas de conteúdos
+app.get('/api/conteudos/estatisticas', async (req, res) => {
+  try {
+    console.log('Gerando estatísticas de conteúdos...');
+    
+    const params = {
+      TableName: CONTEUDOS_TABLE
+    };
+    
+    const result = await dynamoDB.scan(params).promise();
+    const conteudos = result.Items || [];
+    
+    // Calcular estatísticas básicas
+    const totalConteudos = conteudos.length;
+    
+    // Contar por tipo
+    const contagemPorTipo = {};
+    conteudos.forEach(item => {
+      const tipo = item.tipo || 'sem-tipo';
+      contagemPorTipo[tipo] = (contagemPorTipo[tipo] || 0) + 1;
+    });
+    
+    // Contar por status
+    const contagemPorStatus = {};
+    conteudos.forEach(item => {
+      const status = item.status || 'sem-status';
+      contagemPorStatus[status] = (contagemPorStatus[status] || 0) + 1;
+    });
+    
+    // Contagem por data (mês)
+    const contagemPorMes = {};
+    conteudos.forEach(item => {
+      const data = item.dataCriacao || item.dataPublicacao || item.dataAtualizacao;
+      if (data) {
+        const mes = data.substring(0, 7); // Formato YYYY-MM
+        contagemPorMes[mes] = (contagemPorMes[mes] || 0) + 1;
+      }
+    });
+    
+    res.json({
+      status: 'success',
+      totalConteudos,
+      contagemPorTipo,
+      contagemPorStatus,
+      contagemPorMes,
+      ultimaAtualizacao: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ Erro ao gerar estatísticas de conteúdos:', error);
+    res.status(500).json({
+      status: 'error',
+      error: `Erro ao gerar estatísticas: ${error.message}`,
+      message: 'Falha ao gerar estatísticas'
+    });
+  }
+});
+
+// Endpoint para obter conteúdo específico
+app.get('/api/conteudos/:id', async (req, res) => {
+  const id = req.params.id;
+  
+  try {
+    console.log(`Buscando conteúdo com ID: ${id}`);
+    
+    // Detectar chave primária da tabela de conteúdos
+    let primaryKey = 'id'; // Chave padrão
+    
+    try {
+      const testScan = await dynamoDB.scan({
+        TableName: CONTEUDOS_TABLE,
+        Limit: 1
+      }).promise();
+      
+      if (testScan.Items && testScan.Items.length > 0) {
+        const item = testScan.Items[0];
+        const possibleKeys = ['id', 'conteudoId', 'contentId', 'slug', 'url', '_id'];
+        
+        for (const key of possibleKeys) {
+          if (item[key]) {
+            primaryKey = key;
+            break;
+          }
+        }
+      }
+    } catch (scanError) {
+      console.error(`Erro ao detectar chave primária de conteúdos:`, scanError.message);
+    }
+    
+    // Buscar conteúdo pelo ID
+    const params = {
+      TableName: CONTEUDOS_TABLE,
+      Key: { [primaryKey]: id }
+    };
+    
+    const result = await dynamoDB.get(params).promise();
+    
+    if (result.Item) {
+      res.json({
+        status: 'success',
+        conteudo: result.Item,
+        table: CONTEUDOS_TABLE,
+        primaryKey
+      });
+    } else {
+      res.status(404).json({
+        status: 'error',
+        error: 'Conteúdo não encontrado',
+        message: `Conteúdo com ID ${id} não encontrado`,
+        id,
+        table: CONTEUDOS_TABLE,
+        primaryKey
+      });
+    }
+  } catch (error) {
+    console.error(`❌ Erro ao buscar conteúdo ${id}:`, error);
+    res.status(500).json({
+      status: 'error',
+      error: `Erro ao buscar conteúdo: ${error.message}`,
+      id
+    });
+  }
+});
+
+// ======== ENDPOINTS DO KANBAN DE USUÁRIOS ========
+
+// Endpoint para obter o quadro Kanban de usuários
+app.get('/api/kanban/usuarios', async (req, res) => {
+  try {
+    console.log('Gerando dados do Kanban de usuários...');
+    
+    const params = {
+      TableName: USUARIOS_TABLE
+    };
+    
+    const result = await dynamoDB.scan(params).promise();
+    const usuarios = result.Items;
+    
+    // Agrupar usuários por estágio/status
+    const estagios = {
+      novos: [],
+      onboarding: [],
+      emProgresso: [],
+      concluido: [],
+      inativo: []
+    };
+    
+    usuarios.forEach(usuario => {
+      // Determinar o estágio do usuário
+      let estagio = usuario.estagio || 'novos';
+      
+      // Mapeamento de diferentes formatos de estágio
+      if (usuario.status === 'ativo' || usuario.ativo === true) {
+        estagio = 'emProgresso';
+      } else if (usuario.status === 'inativo' || usuario.ativo === false) {
+        estagio = 'inativo';
+      } else if (usuario.status === 'pendente' || usuario.estagio === 'onboarding') {
+        estagio = 'onboarding';
+      } else if (usuario.status === 'completo' || usuario.estagio === 'concluido') {
+        estagio = 'concluido';
+      }
+      
+      // Adicionar ao grupo apropriado
+      if (estagios.hasOwnProperty(estagio)) {
+        estagios[estagio].push(usuario);
+      } else {
+        estagios.novos.push(usuario);
+      }
+    });
+    
+    res.json({
+      kanban: {
+        totalUsuarios: usuarios.length,
+        estagios
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Erro ao gerar dados do Kanban:', error);
+    res.status(500).json({
+      error: `Erro ao gerar dados do Kanban: ${error.message}`
+    });
+  }
+});
+
+// Endpoint para mover usuário entre estágios no Kanban
+app.put('/api/kanban/usuarios/:id/mover', async (req, res) => {
+  const id = req.params.id;
+  const { origem, destino } = req.body;
+  
+  if (!origem || !destino) {
+    return res.status(400).json({
+      error: 'Dados insuficientes',
+      message: 'É necessário informar os estágios de origem e destino'
+    });
+  }
+  
+  try {
+    console.log(`Movendo usuário ${id} de "${origem}" para "${destino}"`);
+    
+    // Mapeamento de estágios do kanban para valores no banco
+    const estagioParaStatusMap = {
+      'novos': 'novo',
+      'onboarding': 'pendente',
+      'emProgresso': 'ativo',
+      'concluido': 'completo',
+      'inativo': 'inativo'
+    };
+    
+    // Detectar chave primária
+    const primaryKey = await detectPrimaryKey(USUARIOS_TABLE);
+    if (!primaryKey) {
+      return res.status(500).json({ error: 'Não foi possível detectar a chave primária da tabela' });
+    }
+    
+    // Obter usuário atual
+    const getParams = {
+      TableName: USUARIOS_TABLE,
+      Key: { [primaryKey]: id }
+    };
+    
+    const usuarioAtual = await dynamoDB.get(getParams).promise();
+    
+    if (!usuarioAtual.Item) {
+      return res.status(404).json({
+        error: 'Usuário não encontrado',
+        id
+      });
+    }
+    
+    // Atualizar estágio e status
+    const updateParams = {
+      TableName: USUARIOS_TABLE,
+      Key: { [primaryKey]: id },
+      UpdateExpression: 'SET estagio = :estagio, #status = :status, ultimaAtualizacao = :timestamp',
+      ExpressionAttributeNames: {
+        '#status': 'status'
+      },
+      ExpressionAttributeValues: {
+        ':estagio': destino,
+        ':status': estagioParaStatusMap[destino] || 'ativo',
+        ':timestamp': new Date().toISOString()
+      },
+      ReturnValues: 'ALL_NEW'
+    };
+    
+    const result = await dynamoDB.update(updateParams).promise();
+    
+    // Registrar a transição
+    const timestamp = new Date().toISOString();
+    console.log(`[${timestamp}] Usuário ${id} movido de "${origem}" para "${destino}"`);
+    
+    res.json({
+      message: `Usuário movido com sucesso para ${destino}`,
+      usuario: result.Attributes,
+      transicao: {
+        de: origem,
+        para: destino,
+        timestamp
+      }
+    });
+    
+  } catch (error) {
+    console.error(`❌ Erro ao mover usuário ${id} no Kanban:`, error);
+    res.status(500).json({
+      error: `Erro ao mover usuário: ${error.message}`,
+      id
+    });
+  }
+});
+
+// Endpoint para estatísticas do Kanban
+app.get('/api/kanban/estatisticas', async (req, res) => {
+  try {
+    console.log('Gerando estatísticas do Kanban...');
+    
+    const result = await dynamoDB.scan({ TableName: USUARIOS_TABLE }).promise();
+    const usuarios = result.Items;
+    
+    // Contar usuários por estágio
+    const contagemPorEstagio = {
+      novos: 0,
+      onboarding: 0,
+      emProgresso: 0,
+      concluido: 0,
+      inativo: 0
+    };
+    
+    // Média de tempo em cada estágio (em dias)
+    const tempoMedioPorEstagio = {
+      novos: 0,
+      onboarding: 0,
+      emProgresso: 0,
+      concluido: 0
+    };
+    
+    // Contagens para calcular as médias
+    const contagens = {
+      novos: 0,
+      onboarding: 0,
+      emProgresso: 0,
+      concluido: 0
+    };
+    
+    // Analisar cada usuário
+    usuarios.forEach(usuario => {
+      // Determinar estágio
+      let estagio = usuario.estagio || 'novos';
+      
+      if (usuario.status === 'ativo' || usuario.ativo === true) {
+        estagio = 'emProgresso';
+      } else if (usuario.status === 'inativo' || usuario.ativo === false) {
+        estagio = 'inativo';
+      } else if (usuario.status === 'pendente' || usuario.estagio === 'onboarding') {
+        estagio = 'onboarding';
+      } else if (usuario.status === 'completo' || usuario.estagio === 'concluido') {
+        estagio = 'concluido';
+      }
+      
+      // Incrementar contagem
+      if (contagemPorEstagio.hasOwnProperty(estagio)) {
+        contagemPorEstagio[estagio]++;
+      }
+      
+      // Calcular tempo no estágio atual, se tiver datas
+      if (usuario.dataEntradaEstagio && contagens.hasOwnProperty(estagio)) {
+        const dataEntrada = new Date(usuario.dataEntradaEstagio);
+        const agora = new Date();
+        const diasNoEstagio = Math.floor((agora - dataEntrada) / (1000 * 60 * 60 * 24));
+        
+        tempoMedioPorEstagio[estagio] += diasNoEstagio;
+        contagens[estagio]++;
+      }
+    });
+    
+    // Calcular médias finais
+    Object.keys(tempoMedioPorEstagio).forEach(estagio => {
+      if (contagens[estagio] > 0) {
+        tempoMedioPorEstagio[estagio] = Math.round(tempoMedioPorEstagio[estagio] / contagens[estagio]);
+      }
+    });
+    
+    // Calcular taxas de conversão
+    const taxasConversao = {
+      'novos_para_onboarding': contagemPorEstagio.novos > 0 ? 
+        (contagemPorEstagio.onboarding / contagemPorEstagio.novos * 100).toFixed(1) + '%' : '0%',
+      'onboarding_para_emProgresso': contagemPorEstagio.onboarding > 0 ? 
+        (contagemPorEstagio.emProgresso / contagemPorEstagio.onboarding * 100).toFixed(1) + '%' : '0%',
+      'emProgresso_para_concluido': contagemPorEstagio.emProgresso > 0 ? 
+        (contagemPorEstagio.concluido / contagemPorEstagio.emProgresso * 100).toFixed(1) + '%' : '0%'
+    };
+    
+    res.json({
+      totalUsuarios: usuarios.length,
+      contagemPorEstagio,
+      tempoMedioPorEstagio,
+      taxasConversao,
+      ultimaAtualizacao: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ Erro ao gerar estatísticas do Kanban:', error);
+    res.status(500).json({
+      error: `Erro ao gerar estatísticas: ${error.message}`
+    });
+  }
+});
+
+// Endpoint para adicionar uma anotação a um usuário
+app.post('/api/usuarios/:id/anotacoes', async (req, res) => {
+  const id = req.params.id;
+  const { texto, autor } = req.body;
+  
+  if (!texto) {
+    return res.status(400).json({ error: 'O texto da anotação é obrigatório' });
+  }
+  
+  try {
+    // Detectar chave primária
+    const primaryKey = await detectPrimaryKey(USUARIOS_TABLE);
+    if (!primaryKey) {
+      return res.status(500).json({ error: 'Não foi possível detectar a chave primária da tabela' });
+    }
+    
+    // Obter o usuário primeiro
+    const getParams = {
+      TableName: USUARIOS_TABLE,
+      Key: { [primaryKey]: id }
+    };
+    
+    const usuarioAtual = await dynamoDB.get(getParams).promise();
+    
+    if (!usuarioAtual.Item) {
+      return res.status(404).json({
+        error: 'Usuário não encontrado',
+        id
+      });
+    }
+    
+    // Criar a anotação
+    const anotacao = {
+      id: Date.now().toString(),
+      texto,
+      autor: autor || 'Sistema',
+      data: new Date().toISOString()
+    };
+    
+    // Adicionar a anotação ao usuário
+    const anotacoes = usuarioAtual.Item.anotacoes || [];
+    anotacoes.push(anotacao);
+    
+    // Atualizar o usuário
+    const updateParams = {
+      TableName: USUARIOS_TABLE,
+      Key: { [primaryKey]: id },
+      UpdateExpression: 'SET anotacoes = :anotacoes, ultimaAtualizacao = :timestamp',
+      ExpressionAttributeValues: {
+        ':anotacoes': anotacoes,
+        ':timestamp': new Date().toISOString()
+      },
+      ReturnValues: 'ALL_NEW'
+    };
+    
+    const result = await dynamoDB.update(updateParams).promise();
+    
+    console.log(`✅ Anotação adicionada ao usuário ${id}`);
+    res.status(201).json({
+      message: 'Anotação adicionada com sucesso',
+      anotacao,
+      usuario: result.Attributes
+    });
+    
+  } catch (error) {
+    console.error(`❌ Erro ao adicionar anotação ao usuário ${id}:`, error);
+    res.status(500).json({
+      error: `Erro ao adicionar anotação: ${error.message}`,
+      id
+    });
+  }
+});
+
+// Endpoint para atualizar status do usuário
+app.put('/api/usuarios/:id/status', async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const { status } = req.body;
+    
+    if (!status) {
+      return res.status(400).json({ error: 'Status não fornecido' });
+    }
+    
+    // Detectar chave primária
+    const primaryKey = await detectPrimaryKey(USUARIOS_TABLE);
+    if (!primaryKey) {
+      return res.status(500).json({ error: 'Não foi possível detectar a chave primária da tabela' });
+    }
+    
+    // Tentar atualizar com a chave primária detectada
+    const updateParams = {
+      TableName: USUARIOS_TABLE,
+      Key: { [primaryKey]: userId },
+      UpdateExpression: 'SET #status = :status',
+      ExpressionAttributeNames: {
+        '#status': 'status'
+      },
+      ExpressionAttributeValues: {
+        ':status': status
+      },
+      ReturnValues: 'ALL_NEW'
+    };
+    
+    const result = await dynamoDB.update(updateParams).promise();
+    
+    await logStatusChange(userId, result.Attributes.status, status, { primaryKey });
+    
+    res.json({
+      message: 'Status atualizado com sucesso',
+      usuario: result.Attributes,
+      status: 'success'
+    });
+    
+  } catch (error) {
+    console.error('Erro ao atualizar status do usuário:', error);
+    res.status(500).json({
+      error: `Erro ao atualizar status: ${error.message}`,
+      stack: error.stack,
+      status: 'error'
+    });
+  }
+});
+
+// Endpoint para remover usuário
 app.delete('/api/usuarios/:id', async (req, res) => {
   const id = req.params.id;
   console.log(`⚠️ Solicitação de remoção de usuário recebida. ID: ${id}`);
   
   try {
-    // Criar variações do ID para tentar (com e sem prefixos comuns)
+    // Criar variações do ID para tentar
     let idVariations = [id];
     
     // Se o ID começa com algum prefixo conhecido, adicionar versão sem prefixo
@@ -469,7 +1230,6 @@ app.delete('/api/usuarios/:id', async (req, res) => {
       idVariations.push(uuidPart);
       console.log(`ID parece ser UUID com prefixo. Tentando extrair parte UUID: ${uuidPart}`);
       
-      // Tentar extrair e formatar UUID corretamente
       const extractedUUID = extractUUID(id);
       if (extractedUUID && !idVariations.includes(extractedUUID)) {
         idVariations.push(extractedUUID);
@@ -477,182 +1237,11 @@ app.delete('/api/usuarios/:id', async (req, res) => {
       }
     }
     
-    // Verificar metadados da tabela primeiro para entender a estrutura de chave
-    try {
-      console.log('Obtendo metadados da tabela DynamoDB:', USUARIOS_TABLE);
-      // Usar AWS.DynamoDB em vez de DocumentClient para acessar o método describeTable
-      const dynamoDBStandard = new AWS.DynamoDB();
-      const tableData = await dynamoDBStandard.describeTable({
-        TableName: USUARIOS_TABLE
-      }).promise();
-      
-      if (tableData && tableData.Table && tableData.Table.KeySchema) {
-        console.log('Esquema de chave da tabela:', JSON.stringify(tableData.Table.KeySchema));
-        
-        // Extrair informações sobre as chaves
-        const partitionKey = tableData.Table.KeySchema.find(k => k.KeyType === 'HASH');
-        const sortKey = tableData.Table.KeySchema.find(k => k.KeyType === 'RANGE');
-        
-        if (partitionKey) {
-          console.log(`Chave de partição encontrada: ${partitionKey.AttributeName}`);
-          
-          if (sortKey) {
-            console.log(`Chave de ordenação encontrada: ${sortKey.AttributeName}`);
-            console.log('⚠️ A tabela usa uma chave composta. Tentando determinar o valor da chave de ordenação.');
-          }
-          
-          // Obter informações sobre os usuários através de uma operação de scan
-          console.log('Realizando scan para encontrar o usuário com variações de ID:', idVariations);
-          
-          let scanExpression = '';
-          let expressionAttrValues = {};
-          
-          idVariations.forEach((varId, index) => {
-            if (index > 0) scanExpression += ' OR ';
-            
-            // Priorizar o campo userId conforme identificado no diagnóstico
-            scanExpression += `userId = :id${index} OR id = :id${index} OR usuarioId = :id${index} OR telefone = :id${index} OR phoneNumber = :id${index}`;
-            expressionAttrValues[`:id${index}`] = varId;
-          });
-          
-          const scanParams = {
-            TableName: USUARIOS_TABLE,
-            FilterExpression: scanExpression,
-            ExpressionAttributeValues: expressionAttrValues
-          };
-          
-          const scanResult = await dynamoDB.scan(scanParams).promise();
-          
-          if (scanResult.Items && scanResult.Items.length > 0) {
-            console.log(`✅ Usuário encontrado via scan! Total: ${scanResult.Items.length}`);
-            
-            // Exibir os objetos de usuário encontrados para diagnóstico
-            scanResult.Items.forEach((user, index) => {
-              console.log(`Usuário ${index + 1}:`, JSON.stringify(user));
-              console.log(`Campos disponíveis:`, Object.keys(user).join(', '));
-              
-              // Verificar campos que podem ser usados como ID
-              const possibleIdFields = ['id', 'usuarioId', 'userId', 'telefone', 'phoneNumber', 'whatsapp', '_id', 'uid'];
-              possibleIdFields.forEach(field => {
-                if (user[field]) {
-                  console.log(`Campo ${field} encontrado com valor: ${user[field]}`);
-                }
-              });
-            });
-            
-            const user = scanResult.Items[0];
-            
-            // Verificar se o campo 'userId' está presente (principal campo de ID conforme diagnóstico)
-            if (user.userId) {
-              console.log(`Campo 'userId' encontrado, usando como chave primária: ${user.userId}`);
-              const deleteParams = {
-                TableName: USUARIOS_TABLE,
-                Key: { userId: user.userId }
-              };
-              
-              await dynamoDB.delete(deleteParams).promise();
-              console.log(`✅ Usuário removido com sucesso usando userId=${user.userId}`);
-              return res.json({ 
-                message: 'Usuário removido com sucesso',
-                id: id,
-                keyField: 'userId',
-                valueUsed: user.userId
-              });
-            }
-            // Se não tiver userId, tentar com a chave de partição identificada
-            else if (partitionKey.AttributeName in user) {
-              // Configurar o objeto de chave corretamente
-              let keyObj = {
-                [partitionKey.AttributeName]: user[partitionKey.AttributeName]
-              };
-              
-              // Se existe uma chave de ordenação, adicionar
-              if (sortKey && sortKey.AttributeName in user) {
-                keyObj[sortKey.AttributeName] = user[sortKey.AttributeName];
-              }
-              
-              console.log('Removendo usuário com chave:', JSON.stringify(keyObj));
-              
-              const deleteParams = {
-                TableName: USUARIOS_TABLE,
-                Key: keyObj
-              };
-              
-              await dynamoDB.delete(deleteParams).promise();
-              console.log(`✅ Usuário removido com sucesso usando scan`);
-              return res.json({ 
-                message: 'Usuário removido com sucesso',
-                id: id,
-                keyStructure: Object.keys(keyObj).join(', '),
-              });
-            } else {
-              console.log(`❌ Usuário encontrado, mas não possui o atributo da chave de partição: ${partitionKey.AttributeName}`);
-              console.log('Tentando métodos alternativos de remoção...');
-            }
-          } else {
-            console.log('❌ Scan não encontrou usuários. Tentando métodos alternativos...');
-          }
-        } else {
-          console.log('❌ Não foi possível determinar a chave de partição a partir dos metadados da tabela');
-        }
-      } else {
-        console.log('❌ Não foi possível obter informações sobre a estrutura da tabela');
-      }
-    } catch (metaError) {
-      console.error('❌ Erro ao obter metadados da tabela:', metaError);
-      console.log('Prosseguindo com tentativas alternativas de remoção...');
-    }
-    
-    // Se não conseguiu remover pelo método acima, tentar métodos padrão
-    return await tryStandardDelete(id, res);
-  } catch (error) {
-    console.error('❌ Erro geral ao remover usuário:', error);
-    return res.status(500).json({
-      error: `Erro na operação: ${error.message}`,
-      code: error.code || 'ERROR',
-      id: id
-    });
-  }
-});
-
-// Função auxiliar para tentar remover usuário usando os métodos padrão
-async function tryStandardDelete(id, res) {
-  try {
-    console.log('Tentando métodos padrão de deleção para o ID:', id);
-    
-    // Criar variações do ID para tentar (com e sem prefixos comuns)
-    let idVariations = [id];
-    
-    // Se o ID começa com algum prefixo conhecido, adicionar versão sem prefixo
-    const knownPrefixes = ['usr', 'user', 'u-', 'user-', 'id-'];
-    for (const prefix of knownPrefixes) {
-      if (id.startsWith(prefix)) {
-        idVariations.push(id.substring(prefix.length));
-        console.log(`Adicionada variação sem prefixo '${prefix}': ${id.substring(prefix.length)}`);
-      }
-    }
-    
-    // Se o formato parece ser UUID com prefixo, tentar remover o prefixo
-    if (/^[a-z]+[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$/i.test(id)) {
-      const uuidPart = id.replace(/^[a-z]+/i, '');
-      idVariations.push(uuidPart);
-      console.log(`ID parece ser UUID com prefixo. Tentando extrair parte UUID: ${uuidPart}`);
-      
-      // Tentar extrair e formatar UUID corretamente
-      const extractedUUID = extractUUID(id);
-      if (extractedUUID && !idVariations.includes(extractedUUID)) {
-        idVariations.push(extractedUUID);
-        console.log(`UUID extraído e formatado: ${extractedUUID}`);
-      }
-    }
-    
-    // Baseado no diagnóstico, identificamos que userId é o principal campo de ID na tabela
-    
-    // Iteração sobre todas as variações do ID
+    // Tentar remover com cada variação do ID
     for (const varId of idVariations) {
       console.log(`Tentando deleção com variação do ID: ${varId}`);
       
-      // 0. PRIMEIRO: Tentar com userId como chave principal (conforme identificado no diagnóstico)
+      // Tentar com userId
       try {
         const getUserIdParams = {
           TableName: USUARIOS_TABLE,
@@ -662,7 +1251,6 @@ async function tryStandardDelete(id, res) {
         const usuarioByUserId = await dynamoDB.get(getUserIdParams).promise();
         
         if (usuarioByUserId.Item) {
-          // Usuário encontrado, prosseguir com a remoção
           const deleteParams = {
             TableName: USUARIOS_TABLE,
             Key: { userId: varId }
@@ -674,14 +1262,15 @@ async function tryStandardDelete(id, res) {
             message: 'Usuário removido com sucesso',
             id: id,
             keyField: 'userId',
-            variationUsed: varId
+            variationUsed: varId,
+            status: 'success'
           });
         }
       } catch (err) {
         console.log(`Tentativa com userId=${varId} falhou:`, err.message);
       }
       
-      // 1. Tentar com id como chave simples (mantido para compatibilidade)
+      // Tentar com id
       try {
         const getParams = {
           TableName: USUARIOS_TABLE,
@@ -691,7 +1280,6 @@ async function tryStandardDelete(id, res) {
         const usuario = await dynamoDB.get(getParams).promise();
         
         if (usuario.Item) {
-          // Usuário encontrado, prosseguir com a remoção
           const deleteParams = {
             TableName: USUARIOS_TABLE,
             Key: { id: varId }
@@ -703,14 +1291,15 @@ async function tryStandardDelete(id, res) {
             message: 'Usuário removido com sucesso',
             id: id,
             keyField: 'id',
-            variationUsed: varId
+            variationUsed: varId,
+            status: 'success'
           });
         }
       } catch (err) {
         console.log(`Tentativa com id=${varId} falhou:`, err.message);
       }
       
-      // 2. Tentar com usuarioId
+      // Tentar com usuarioId
       try {
         const getAltParams = {
           TableName: USUARIOS_TABLE,
@@ -719,8 +1308,6 @@ async function tryStandardDelete(id, res) {
         
         const usuarioAlt = await dynamoDB.get(getAltParams).promise();
         if (usuarioAlt.Item) {
-          console.log('Usuário encontrado usando "usuarioId" como chave.');
-          // Deletar usando a chave correta
           const deleteParams = {
             TableName: USUARIOS_TABLE,
             Key: { usuarioId: varId }
@@ -732,14 +1319,15 @@ async function tryStandardDelete(id, res) {
             message: 'Usuário removido com sucesso',
             id: id,
             keyField: 'usuarioId',
-            variationUsed: varId
+            variationUsed: varId,
+            status: 'success'
           });
         }
       } catch (err) {
         console.log(`Tentativa com usuarioId=${varId} falhou:`, err.message);
       }
       
-      // 3. Tentar com telefone
+      // Tentar com telefone
       try {
         const getTelParams = {
           TableName: USUARIOS_TABLE,
@@ -748,8 +1336,6 @@ async function tryStandardDelete(id, res) {
         
         const usuarioTel = await dynamoDB.get(getTelParams).promise();
         if (usuarioTel.Item) {
-          console.log('Usuário encontrado usando "telefone" como chave.');
-          // Deletar usando a chave correta
           const deleteParams = {
             TableName: USUARIOS_TABLE,
             Key: { telefone: varId }
@@ -761,100 +1347,45 @@ async function tryStandardDelete(id, res) {
             message: 'Usuário removido com sucesso',
             id: id,
             keyField: 'telefone',
-            variationUsed: varId
+            variationUsed: varId,
+            status: 'success'
           });
         }
       } catch (err) {
         console.log(`Tentativa com telefone=${varId} falhou:`, err.message);
       }
-      
-      // 4. Tentar com phoneNumber
-      try {
-        const getPhoneParams = {
-          TableName: USUARIOS_TABLE,
-          Key: { phoneNumber: varId }
-        };
-        
-        const usuarioPhone = await dynamoDB.get(getPhoneParams).promise();
-        if (usuarioPhone.Item) {
-          console.log('Usuário encontrado usando "phoneNumber" como chave.');
-          // Deletar usando a chave correta
-          const deleteParams = {
-            TableName: USUARIOS_TABLE,
-            Key: { phoneNumber: varId }
-          };
-          
-          await dynamoDB.delete(deleteParams).promise();
-          console.log(`✅ Usuário ${varId} removido com sucesso (chave: phoneNumber)`);
-          return res.json({ 
-            message: 'Usuário removido com sucesso',
-            id: id,
-            keyField: 'phoneNumber',
-            variationUsed: varId
-          });
-        }
-      } catch (err) {
-        console.log(`Tentativa com phoneNumber=${varId} falhou:`, err.message);
-      }
     }
     
-    // Última tentativa: usar apenas a parte numérica se houver
-    const numericPart = id.replace(/\D/g, '');
-    if (numericPart && numericPart !== id) {
-      console.log(`Tentando com apenas a parte numérica: ${numericPart}`);
-      
-      try {
-        const getNumParams = {
-          TableName: USUARIOS_TABLE,
-          Key: { telefone: numericPart }
-        };
-        
-        const usuarioNum = await dynamoDB.get(getNumParams).promise();
-        if (usuarioNum.Item) {
-          console.log('Usuário encontrado usando parte numérica como telefone.');
-          const deleteParams = {
-            TableName: USUARIOS_TABLE,
-            Key: { telefone: numericPart }
-          };
-          
-          await dynamoDB.delete(deleteParams).promise();
-          console.log(`✅ Usuário com telefone ${numericPart} removido com sucesso`);
-          return res.json({ 
-            message: 'Usuário removido com sucesso',
-            id: id,
-            keyField: 'telefone',
-            variationUsed: numericPart
-          });
-        }
-      } catch (err) {
-        console.log(`Tentativa com telefone (parte numérica)=${numericPart} falhou:`, err.message);
-      }
-    }
-    
-    // Se chegou aqui, não conseguiu remover o usuário com nenhuma tentativa
+    // Se chegou aqui, não conseguiu remover o usuário
     return res.status(404).json({ 
       error: 'Usuário não encontrado', 
       id: id,
       message: 'Não foi possível encontrar o usuário com o ID fornecido em nenhuma das chaves possíveis.',
-      variationsTried: idVariations
+      variationsTried: idVariations,
+      status: 'error'
     });
-  } catch (dbError) {
-    console.error('❌ Erro ao operar no DynamoDB:', dbError);
+    
+  } catch (error) {
+    console.error('❌ Erro ao remover usuário:', error);
     return res.status(500).json({
-      error: `Erro na operação: ${dbError.message}`,
-      code: dbError.code,
-      id: id
+      error: `Erro na operação: ${error.message}`,
+      code: error.code || 'ERROR',
+      id: id,
+      status: 'error'
     });
   }
-}
+});
 
-// Endpoint para atualizar o estágio do usuário
+// Endpoint para atualizar estágio do usuário
 app.put('/api/usuarios/:id/estagio', async (req, res) => {
   const { id } = req.params;
   const { novoEstagio } = req.body;
   
   if (!id || !novoEstagio) {
-    return res.status(400).json({ error: 'ID do usuário e novo estágio são obrigatórios' });
+    return res.status(400).json({ 
+      error: 'ID do usuário e novo estágio são obrigatórios',
+      status: 'error'
+    });
   }
   
   try {
@@ -868,10 +1399,19 @@ app.put('/api/usuarios/:id/estagio', async (req, res) => {
     
     const estagioAtualizado = estagioMapping[novoEstagio] || novoEstagio;
     
+    // Detectar chave primária
+    const primaryKey = await detectPrimaryKey(USUARIOS_TABLE);
+    if (!primaryKey) {
+      return res.status(500).json({ 
+        error: 'Não foi possível detectar a chave primária da tabela',
+        status: 'error'
+      });
+    }
+    
     // Parâmetros para atualizar o usuário
     const params = {
       TableName: USUARIOS_TABLE,
-      Key: { id },
+      Key: { [primaryKey]: id },
       UpdateExpression: "set estagio = :estagio, ultimaAtualizacao = :timestamp",
       ExpressionAttributeValues: {
         ":estagio": estagioAtualizado,
@@ -880,24 +1420,26 @@ app.put('/api/usuarios/:id/estagio', async (req, res) => {
       ReturnValues: "ALL_NEW"
     };
     
-    // Atualizar no DynamoDB
     const result = await dynamoDB.update(params).promise();
     
     console.log(`Usuário ${id} movido para estágio: ${novoEstagio}`);
     res.json({ 
       success: true, 
       message: `Usuário movido para ${novoEstagio}`, 
-      usuario: result.Attributes 
+      usuario: result.Attributes,
+      status: 'success'
     });
   } catch (error) {
     console.error(`Erro ao atualizar estágio do usuário ${id}:`, error);
-    res.status(500).json({ error: `Erro ao atualizar estágio: ${error.message}` });
+    res.status(500).json({ 
+      error: `Erro ao atualizar estágio: ${error.message}`,
+      status: 'error'
+    });
   }
 });
 
 // Endpoint para dashboards
 app.get('/api/dashboards', (req, res) => {
-  // Obter a região da AWS para construir os links
   const region = dynamoConfig.region;
   
   res.json({
@@ -923,81 +1465,10 @@ app.get('/api/dashboards', (req, res) => {
         name: 'Console do Lambda',
         url: `https://console.aws.amazon.com/lambda/home?region=${region}#/functions`
       }
-    ]
+    ],
+    status: 'success'
   });
 });
-
-// Função para explorar a estrutura da tabela e detectar problemas
-async function exploreTableStructure() {
-  try {
-    console.log('🔍 Explorando estrutura da tabela DynamoDB:', USUARIOS_TABLE);
-    
-    // Obter metadados da tabela
-    // Usar AWS.DynamoDB em vez de DocumentClient para acessar o método describeTable
-    const dynamoDBStandard = new AWS.DynamoDB();
-    const tableData = await dynamoDBStandard.describeTable({
-      TableName: USUARIOS_TABLE
-    }).promise();
-    
-    if (tableData && tableData.Table) {
-      const keySchema = tableData.Table.KeySchema;
-      const attributeDefs = tableData.Table.AttributeDefinitions;
-      
-      console.log('📊 Esquema de chave da tabela:');
-      keySchema.forEach(key => {
-        console.log(`- ${key.AttributeName} (${key.KeyType === 'HASH' ? 'Partition Key' : 'Sort Key'})`);
-      });
-      
-      console.log('📝 Definições de atributos:');
-      attributeDefs.forEach(attr => {
-        console.log(`- ${attr.AttributeName}: ${attr.AttributeType}`);
-      });
-      
-      // Realizar uma consulta para obter um exemplo de item
-      const scanResult = await dynamoDB.scan({
-        TableName: USUARIOS_TABLE,
-        Limit: 1
-      }).promise();
-      
-      if (scanResult.Items && scanResult.Items.length > 0) {
-        const sampleItem = scanResult.Items[0];
-        console.log('📋 Exemplo de item na tabela:');
-        console.log(JSON.stringify(sampleItem, null, 2));
-        
-        // Verificar se a chave primária definida está presente no item
-        const partitionKey = keySchema.find(k => k.KeyType === 'HASH')?.AttributeName;
-        const sortKey = keySchema.find(k => k.KeyType === 'RANGE')?.AttributeName;
-        
-        if (partitionKey && sampleItem[partitionKey]) {
-          console.log(`✅ Chave de partição '${partitionKey}' encontrada no item com valor: ${sampleItem[partitionKey]}`);
-        } else if (partitionKey) {
-          console.log(`⚠️ Chave de partição '${partitionKey}' NÃO encontrada no item exemplo!`);
-        }
-        
-        if (sortKey && sampleItem[sortKey]) {
-          console.log(`✅ Chave de ordenação '${sortKey}' encontrada no item com valor: ${sampleItem[sortKey]}`);
-        } else if (sortKey) {
-          console.log(`⚠️ Chave de ordenação '${sortKey}' NÃO encontrada no item exemplo!`);
-        }
-        
-        // Verificar campos que podem ser usados como IDs
-        const possibleIdFields = ['id', 'usuarioId', 'userId', 'telefone', 'phoneNumber', 'whatsapp', '_id', 'uid'];
-        console.log('🔑 Campos potenciais para ID encontrados no item:');
-        possibleIdFields.forEach(field => {
-          if (sampleItem[field]) {
-            console.log(`- ${field}: ${sampleItem[field]}`);
-          }
-        });
-      } else {
-        console.log('⚠️ Nenhum item encontrado na tabela para análise');
-      }
-    } else {
-      console.log('❌ Não foi possível obter metadados da tabela');
-    }
-  } catch (error) {
-    console.error('❌ Erro ao explorar estrutura da tabela:', error);
-  }
-}
 
 // Explorar a estrutura da tabela na inicialização
 exploreTableStructure().then(() => {
@@ -1006,67 +1477,9 @@ exploreTableStructure().then(() => {
   console.error('Erro durante a exploração da tabela:', err);
 });
 
-// Endpoint de diagnóstico para exibir estrutura de usuários
-app.get('/api/diagnostico/usuarios', async (req, res) => {
-  console.log('🔍 Solicitação de diagnóstico de usuários recebida');
-  
-  try {
-    // Realizar uma consulta para obter todos os itens da tabela
-    const scanParams = {
-      TableName: USUARIOS_TABLE,
-      Limit: 10 // Limitar para não sobrecarregar a resposta
-    };
-    
-    const scanResult = await dynamoDB.scan(scanParams).promise();
-    
-    if (scanResult.Items && scanResult.Items.length > 0) {
-      // Para cada usuário, analisar a estrutura
-      const usuariosAnalisados = scanResult.Items.map(usuario => {
-        // Lista de campos importantes que podem ser chaves
-        const camposImportantes = ['id', 'userId', 'usuarioId', 'phoneNumber', 'telefone', 'email', '_id', 'uid'];
-        const detalhesCampos = {};
-        
-        // Verificar todos os campos disponíveis
-        const todosOsCampos = Object.keys(usuario);
-        
-        // Para cada campo importante, verificar se existe e obter o valor
-        camposImportantes.forEach(campo => {
-          detalhesCampos[campo] = usuario[campo] || 'não presente';
-        });
-        
-        return {
-          camposChave: detalhesCampos,
-          todosOsCampos: todosOsCampos,
-          amostraDeDados: usuario
-        };
-      });
-      
-      return res.json({
-        mensagem: 'Análise de estrutura de usuários',
-        numeroDeUsuarios: scanResult.Items.length,
-        usuariosAnalisados: usuariosAnalisados
-      });
-    } else {
-      return res.status(404).json({
-        erro: 'Nenhum usuário encontrado na tabela',
-        tabela: USUARIOS_TABLE
-      });
-    }
-  } catch (error) {
-    console.error('❌ Erro ao realizar diagnóstico:', error);
-    return res.status(500).json({
-      erro: `Erro ao realizar diagnóstico: ${error.message}`,
-      codigo: error.code || 'ERRO_DESCONHECIDO'
-    });
-  }
-});
-
-// ======== INICIALIZAÇÃO DO SERVIDOR ========
-
-// Iniciar o servidor após validar a conexão
+// Iniciar servidor
 async function startServer() {
   try {
-    // Realizar validação inicial de conexão
     const connectionValid = await validateAwsConnection();
     
     if (!connectionValid) {
@@ -1076,7 +1489,6 @@ async function startServer() {
       `);
     }
     
-    // Inicie o servidor
     app.listen(PORT, () => {
       console.log('==========================================');
       console.log(`✅ Servidor admin rodando na porta ${PORT}`);
@@ -1089,5 +1501,4 @@ async function startServer() {
   }
 }
 
-// Iniciar o servidor
 startServer(); 

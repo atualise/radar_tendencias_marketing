@@ -1,3 +1,9 @@
+// Carrega as variáveis de ambiente do arquivo .env quando executado localmente
+if (process.env.NODE_ENV !== 'production') {
+    const path = require('path');
+    require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
+}
+
 const AWS = require('aws-sdk');
 const axios = require('axios');
 const dynamoDB = new AWS.DynamoDB.DocumentClient();
@@ -12,10 +18,10 @@ const WHATSAPP_SENDER_LAMBDA = process.env.WHATSAPP_SENDER_FUNCTION;
 const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY;
 const CLAUDE_API_URL = process.env.CLAUDE_API_URL || 'https://api.anthropic.com/v1/messages';
 const DEEPSEEK_API_URL = process.env.DEEPSEEK_API_URL || 'http://18.208.170.1:11434/api/generate';
-const USE_CLAUDE_FALLBACK = process.env.USE_CLAUDE_FALLBACK === 'true' || true;
+const USE_DEEPSEEK_FALLBACK = process.env.USE_DEEPSEEK_FALLBACK === 'true' || process.env.USE_CLAUDE_FALLBACK === 'true' || true;
 
 // Modelo Claude padrão
-const CLAUDE_MODEL = process.env.CLAUDE_MODEL || 'claude-3-sonnet-20240229';
+const CLAUDE_MODEL = process.env.CLAUDE_MODEL || 'claude-3-7-sonnet-20250219';
 const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL || 'deepseek-r1:14b';
 
 exports.handler = async (event) => {
@@ -53,23 +59,33 @@ exports.handler = async (event) => {
                 console.error('Erro ao processar solicitação:', error);
                 const errorMessage = error.response?.data?.error?.message || error.message || 'Erro desconhecido';
                 
+                // Definir body como variável local para evitar o erro de referência
+                let recordBody;
+                try {
+                    // Tentar extrair o body do record, mesmo que a análise inicial tenha falhado
+                    recordBody = record.body ? JSON.parse(record.body) : {};
+                } catch (parseError) {
+                    console.error('Erro ao analisar body do record:', parseError);
+                    recordBody = {};
+                }
+                
                 // Se houver informações do usuário e interação, envia mensagem de erro
-                if (body?.userId && body?.interactionId) {
+                if (recordBody?.userId && recordBody?.interactionId) {
                     try {
-                        const user = await getUser(body.userId);
+                        const user = await getUser(recordBody.userId);
                         
                         if (user) {
                             const errorInteractionId = await createOutputInteraction(
-                                body.userId,
+                                recordBody.userId,
                                 `Erro ao gerar conteúdo: ${errorMessage}`,
                                 'error_message',
-                                body.interactionId
+                                recordBody.interactionId
                             );
                             
                             await sendWhatsAppMessage(
                                 user.phoneNumber,
                                 'Desculpe, encontrei um problema ao processar sua solicitação. Por favor, tente novamente mais tarde.',
-                                { interactionId: errorInteractionId, userId: body.userId },
+                                { interactionId: errorInteractionId, userId: recordBody.userId },
                                 null
                             );
                         }
@@ -347,7 +363,7 @@ Se a consulta estiver fora do seu domínio de conhecimento (marketing digital e 
     const contentId = await storeGeneratedContent(
         userId,
         'user_query_response',
-        query.substring(0, 100),
+        query?.substring(0, 100) || 'Consulta do usuário',
         response,
         interactionId
     );
@@ -364,7 +380,7 @@ Se a consulta estiver fora do seu domínio de conhecimento (marketing digital e 
     return {
         status: 'completed',
         contentId,
-        query: query.substring(0, 100)
+        query: query?.substring(0, 100) || 'Consulta do usuário'
     };
 }
 
@@ -397,35 +413,35 @@ function cleanAIResponse(text) {
     return cleanedText;
 }
 
-// Nova função para gerar conteúdo com redundância entre DeepSeek e Claude
+// Função para gerar conteúdo com redundância entre Claude e DeepSeek
 async function generateContent(prompt) {
     console.log('Gerando conteúdo com redundância de modelos...');
     
-    // Tentar primeiro com DeepSeek (opção padrão)
+    // Tentar primeiro com Claude (opção padrão)
     try {
-        console.log('Tentando gerar conteúdo com DeepSeek...');
-        return await callDeepSeekAPI(prompt);
-    } catch (deepseekError) {
-        // Registrar o erro do DeepSeek
-        console.error('Erro ao chamar a API DeepSeek:', deepseekError.message);
+        console.log('Tentando gerar conteúdo com Claude...');
+        return await callClaudeAPI(prompt);
+    } catch (claudeError) {
+        // Registrar o erro do Claude
+        console.error('Erro ao chamar a API Claude:', claudeError.message);
         
-        // Se o fallback com Claude estiver habilitado, tentar com Claude
-        if (USE_CLAUDE_FALLBACK) {
-            console.log('Usando Claude como fallback...');
+        // Se o fallback com DeepSeek estiver habilitado, tentar com DeepSeek
+        if (USE_DEEPSEEK_FALLBACK) {
+            console.log('Usando DeepSeek como fallback...');
             try {
-                return await callClaudeAPI(prompt);
-            } catch (claudeError) {
-                console.error('Erro no fallback com Claude:', claudeError.message);
-                throw new Error(`Falha em ambos os modelos. DeepSeek: ${deepseekError.message}. Claude: ${claudeError.message}`);
+                return await callDeepSeekAPI(prompt);
+            } catch (deepseekError) {
+                console.error('Erro no fallback com DeepSeek:', deepseekError.message);
+                throw new Error(`Falha em ambos os modelos. Claude: ${claudeError.message}. DeepSeek: ${deepseekError.message}`);
             }
         } else {
             // Se não estiver habilitado o fallback, apenas propagar o erro original
-            throw deepseekError;
+            throw claudeError;
         }
     }
 }
 
-// Função para chamar a API DeepSeek via Ollama
+// Função para chamar a API DeepSeek via Ollama (modelo secundário/fallback)
 async function callDeepSeekAPI(prompt) {
     try {
         console.log(`Chamando DeepSeek (${DEEPSEEK_MODEL}) via Ollama...`);
@@ -479,7 +495,7 @@ async function callDeepSeekAPI(prompt) {
     }
 }
 
-// Função existente para chamar a API Claude, adaptada para ser usada como fallback
+// Função para chamar a API Claude (modelo primário)
 async function callClaudeAPI(prompt) {
     try {
         console.log(`Chamando Claude (${CLAUDE_MODEL})...`);
@@ -750,3 +766,9 @@ async function getRecentInteractions(userId, limit = 5) {
     
     return result.Items || [];
 }
+
+// Exportar a função generateContent para uso no script de teste
+module.exports = {
+    handler: exports.handler,
+    generateContent
+};

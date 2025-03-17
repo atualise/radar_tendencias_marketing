@@ -54,6 +54,67 @@ npm install
 
 3. Configure as variáveis de ambiente em um arquivo `.env` ou via parâmetros de deploy.
 
+## Variáveis de Ambiente
+
+O projeto utiliza diversas variáveis de ambiente para configuração. Você pode definir essas variáveis em um arquivo `.env` na raiz do projeto para desenvolvimento local ou configurá-las diretamente no AWS Lambda para produção.
+
+### Arquivo .env.example
+
+Um arquivo `.env.example` está disponível na raiz do projeto. Copie-o para criar seu próprio arquivo `.env`:
+
+```bash
+cp .env.example .env
+```
+
+Então, edite o arquivo `.env` com suas próprias configurações.
+
+### Grupos de Variáveis
+
+#### AWS Configurações
+- `AWS_REGION`: Região da AWS onde os recursos serão implantados (ex: us-east-1)
+- `AWS_PROFILE`: Perfil AWS CLI a ser usado para deploy e desenvolvimento
+
+#### API Claude (Anthropic)
+- `CLAUDE_API_KEY`: Chave de API para acessar a API do Claude da Anthropic
+- `CLAUDE_API_URL`: URL base da API do Claude (padrão: https://api.anthropic.com/v1/messages)
+- `CLAUDE_MODEL`: Modelo do Claude a ser utilizado (padrão: claude-3-7-sonnet-20250219)
+
+#### WhatsApp Business API
+- `WHATSAPP_API_TOKEN`: Token de acesso à API do WhatsApp Business
+- `WHATSAPP_API_URL`: URL base da API do WhatsApp (padrão: https://graph.facebook.com/v21.0/)
+- `WHATSAPP_PHONE_NUMBER_ID`: ID do número de telefone no WhatsApp Business
+- `WHATSAPP_BUSINESS_ACCOUNT_ID`: ID da conta business no WhatsApp
+
+#### Webhook
+- `WEBHOOK_VERIFY_TOKEN`: Token de verificação para o webhook do WhatsApp
+
+#### Tabelas DynamoDB
+- `USERS_TABLE`: Nome da tabela de usuários no DynamoDB
+- `INTERACTIONS_TABLE`: Nome da tabela de interações no DynamoDB
+- `CONTENTS_TABLE`: Nome da tabela de conteúdos no DynamoDB
+
+#### Lambda Functions
+- `WHATSAPP_SENDER_FUNCTION`: Nome da função Lambda que envia mensagens WhatsApp
+
+#### Configuração AI
+- `DEEPSEEK_API_URL`: URL da API Deepseek para geração de texto alternativa
+- `USE_DEEPSEEK_FALLBACK`: Flag para usar DeepSeek como fallback se Claude falhar (true/false)
+- `DEEPSEEK_MODEL`: Modelo Deepseek a ser utilizado (opcional, padrão: deepseek-r1:14b)
+
+### Carregando Variáveis de Ambiente em Módulos
+
+O módulo gerador-conteudo carrega automaticamente o arquivo .env quando executado localmente:
+
+```javascript
+// Carrega as variáveis de ambiente do arquivo .env quando executado localmente
+if (process.env.NODE_ENV !== 'production') {
+    const path = require('path');
+    require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
+}
+```
+
+Se outros módulos precisarem carregar variáveis de ambiente localmente, você deve adicionar código similar no início dos arquivos ou criar um módulo de configuração centralizado.
+
 4. Prepare o ambiente para deploy:
 ```bash
 ./prepare-deploy.sh

@@ -861,16 +861,14 @@
                 $(`#kanban-${coluna} .ver-usuario`).click(function(e) {
                   e.preventDefault();
                   const id = $(this).data('id');
-                  mostrarDetalhesUsuario(id, response.usuarios);
+                  mostrarDetalhesUsuario(id, response.usuarios || []);
                 });
                 
                 $(`#kanban-${coluna} .mover-usuario`).click(function(e) {
                   e.preventDefault();
                   const id = $(this).closest('.kanban-card').data('id');
                   const colunaDestino = $(this).data('coluna');
-                  // Aqui você pode implementar o código para mover o usuário
-                  // entre as colunas (via API) ou apenas visualmente
-                  alert(`Movendo usuário ${id} para ${colunaDestino}`);
+                  moverUsuarioKanban(id, coluna, colunaDestino);
                 });
               }
             } else {
@@ -929,13 +927,48 @@
       }
       
       function mostrarDetalhesUsuario(userId, usuarios) {
-        const usuario = usuarios.find(u => (u.userId || u.id) === userId);
+        // Verificar se usuarios é um array ou um objeto único
+        let usuario;
+        
+        if (Array.isArray(usuarios)) {
+          // Se for um array, encontrar o usuário pelo ID
+          usuario = usuarios.find(u => (u.userId || u.id) === userId);
+        } else if (usuarios && typeof usuarios === 'object') {
+          // Se for um objeto único, verificar se o ID corresponde
+          if ((usuarios.userId || usuarios.id) === userId) {
+            usuario = usuarios;
+          }
+        }
         
         if (!usuario) {
-          alert('Usuário não encontrado!');
+          // Se o usuário não for encontrado, buscar do servidor
+          $.ajax({
+            url: `/api/usuarios`,
+            method: 'GET',
+            success: function(response) {
+              if (response && response.usuarios && Array.isArray(response.usuarios)) {
+                const usuarioEncontrado = response.usuarios.find(u => (u.userId || u.id) === userId);
+                if (usuarioEncontrado) {
+                  exibirDetalhesUsuario(usuarioEncontrado);
+                } else {
+                  mostrarNotificacao('Erro', 'Usuário não encontrado no servidor', 'danger');
+                }
+              } else {
+                mostrarNotificacao('Erro', 'Não foi possível obter detalhes do usuário', 'danger');
+              }
+            },
+            error: function() {
+              mostrarNotificacao('Erro', 'Falha ao buscar detalhes do usuário', 'danger');
+            }
+          });
           return;
         }
         
+        exibirDetalhesUsuario(usuario);
+      }
+      
+      // Função auxiliar para exibir os detalhes do usuário na modal
+      function exibirDetalhesUsuario(usuario) {
         let detalhesHTML = `
           <div class="row">
             <div class="col-md-6">
@@ -959,48 +992,42 @@
                 </tr>
                 <tr>
                   <th>Status:</th>
-                  <td class="${determinarStatus(usuario) === 'Ativo' ? 'status-ativo' : 'status-inativo'}">
-                    ${determinarStatus(usuario)}
-                  </td>
+                  <td>${usuario.status || 'Não definido'}</td>
                 </tr>
                 <tr>
-                  <th>Data Cadastro:</th>
-                  <td>${formatarData(usuario.createdAt || usuario.dataCadastro || '')}</td>
-                </tr>
-                <tr>
-                  <th>Última Atividade:</th>
-                  <td>${formatarData(usuario.lastActive || usuario.ultimaAtividade || '')}</td>
+                  <th>Criado em:</th>
+                  <td>${formatarData(usuario.createdAt || usuario.dataCriacao || 'N/A')}</td>
                 </tr>
               </table>
             </div>
             <div class="col-md-6">
-              <h5>Perfil e Preferências</h5>
-              <div class="card mb-3">
-                <div class="card-body">
-                  ${usuario.profile ? `
-                    <p><strong>Cargo:</strong> ${usuario.profile.role || 'Não informado'}</p>
-                    <p><strong>Empresa:</strong> ${usuario.profile.companySize || 'Não informado'}</p>
-                    <p><strong>Indústria:</strong> ${usuario.profile.industry || 'Não informado'}</p>
-                    <p><strong>Localização:</strong> ${
-                      usuario.profile.location ? 
-                      `${usuario.profile.location.city || ''}, ${usuario.profile.location.state || ''}` :
-                      'Não informada'
-                    }</p>
-                  ` : '<p>Perfil não disponível</p>'}
-                  
-                  ${usuario.preferences ? `
-                    <hr>
-                    <p><strong>Interesse Principal:</strong> ${usuario.preferences.primaryInterest || 'Não informado'}</p>
-                    <p><strong>Frequência de Mensagens:</strong> ${usuario.preferences.messageFrequency || 'Não informado'}</p>
-                    <p><strong>Formato Preferido:</strong> ${usuario.preferences.preferredContentFormat || 'Não informado'}</p>
-                  ` : ''}
-                </div>
-              </div>
+              <h5>Preferências</h5>
+              <table class="table table-sm">
+                <tr>
+                  <th>Frequência:</th>
+                  <td>${usuario.preferences?.frequency || 'Não definida'}</td>
+                </tr>
+                <tr>
+                  <th>Interesse Principal:</th>
+                  <td>${usuario.preferences?.interests ? usuario.preferences.interests.map(i => i.category).join(', ') : 'Não definido'}</td>
+                </tr>
+                <tr>
+                  <th>Formato Preferido:</th>
+                  <td>${usuario.preferences?.preferredContentFormat || 'Não definido'}</td>
+                </tr>
+              </table>
+            </div>
+          </div>
+          <div class="row mt-3">
+            <div class="col-12">
+              <h5>Informações Adicionais</h5>
+              <pre class="bg-light p-2" style="max-height: 200px; overflow-y: auto;">${JSON.stringify(usuario, null, 2)}</pre>
             </div>
           </div>
         `;
         
-        $('#modalTitle').text(`Detalhes do Usuário: ${usuario.name || 'Sem nome'}`);
+        // Injetar o HTML no modal existente e exibir
+        $('#modalTitle').text(`Detalhes do Usuário: ${usuario.name || 'Sem Nome'}`);
         $('#modalBody').html(detalhesHTML);
         $('#detailsModal').modal('show');
       }
@@ -1193,11 +1220,78 @@
       
       // Função para processar os dados e criar os gráficos
       function processarDadosPerfil(dados) {
+        // Limpar todos os gráficos existentes
+        function limparTodosGraficos() {
+          console.log('Limpando todos os gráficos existentes...');
+          
+          // Destruir instâncias anteriores dos gráficos
+          const graficos = {
+            'chartInteressesPrimarios': 'chartInteresses',
+            'chartFrequenciaMensagens': 'chartFreq',
+            'chartTiposConteudo': 'chartTipos',
+            'chartFormatoConteudo': 'chartFormatos',
+            'chartCargos': 'chartCargos', 
+            'chartTamanhoEmpresa': 'chartTamanho',
+            'chartDesafios': 'chartDesafios',
+            'chartHorarioPreferido': 'chartHorarios'
+          };
+          
+          for (const [canvasId, chartVarName] of Object.entries(graficos)) {
+            try {
+              if (window[chartVarName] && typeof window[chartVarName].destroy === 'function') {
+                window[chartVarName].destroy();
+                console.log(`Destruído gráfico: ${chartVarName}`);
+              }
+            } catch (err) {
+              console.error(`Erro ao destruir gráfico ${chartVarName}:`, err);
+            }
+            
+            // Limpar o canvas
+            const canvas = document.getElementById(canvasId);
+            if (canvas) {
+              try {
+                canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+                // Redefinir o canvas para forçar um redesenho
+                const w = canvas.width;
+                canvas.width = 1;
+                canvas.width = w;
+              } catch (err) {
+                console.error(`Erro ao limpar canvas ${canvasId}:`, err);
+              }
+            }
+          }
+          
+          // Redefinir as variáveis globais
+          window.chartInteresses = null;
+          window.chartFreq = null;
+          window.chartTipos = null;
+          window.chartFormatos = null;
+          window.chartCargos = null;
+          window.chartTamanho = null;
+          window.chartDesafios = null;
+          window.chartHorarios = null;
+        }
+        
+        // Limpar todos os gráficos existentes antes de começar
+        limparTodosGraficos();
+        
+        // Inicializar variáveis globais dos gráficos
+        if (!window.chartInteresses) window.chartInteresses = null;
+        if (!window.chartFreq) window.chartFreq = null;
+        if (!window.chartTipos) window.chartTipos = null;
+        if (!window.chartFormatos) window.chartFormatos = null;
+        if (!window.chartCargos) window.chartCargos = null;
+        if (!window.chartTamanho) window.chartTamanho = null;
+        if (!window.chartDesafios) window.chartDesafios = null;
+        if (!window.chartHorarios) window.chartHorarios = null;
+        
         // Garantir que temos dados para trabalhar
         if (!dados || dados.erro) {
           $('#perfisInfo').html(`
-            <i class="fas fa-exclamation-triangle text-warning"></i> 
-            Nenhum dado de usuário disponível para análise: ${dados.erro || "Erro desconhecido"}
+            <div class="alert alert-warning">
+              <i class="fas fa-exclamation-triangle"></i> 
+              Nenhum dado de usuário disponível para análise: ${dados?.erro || "Erro desconhecido"}
+            </div>
           `);
           return;
         }
@@ -1210,14 +1304,19 @@
           'email_marketing': 'E-mail Marketing',
           'inbound_marketing': 'Inbound Marketing',
           'performance_marketing': 'Marketing de Performance',
-          'affiliate_marketing': 'Marketing de Afiliados'
+          'affiliate_marketing': 'Marketing de Afiliados',
+          'digital_marketing': 'Marketing Digital',
+          'content_strategy': 'Estratégia de Conteúdo'
         };
         
         // Traduzir frequências para português
         const traducaoFreq = {
           'high': 'Alta',
           'medium': 'Média',
-          'low': 'Baixa'
+          'low': 'Baixa',
+          'daily': 'Diária',
+          'weekly': 'Semanal',
+          'monthly': 'Mensal'
         };
         
         // Traduzir tipos de conteúdo para português
@@ -1227,295 +1326,628 @@
           'cases': 'Casos de Uso',
           'tips': 'Dicas',
           'tutorials': 'Tutoriais',
-          'insights': 'Insights'
+          'insights': 'Insights',
+          'trends': 'Tendências',
+          'analysis': 'Análises',
+          'guides': 'Guias'
         };
         
         // Traduzir formatos para português
         const traducaoFormatos = {
           'brief': 'Resumido',
           'detailed': 'Detalhado',
-          'visual': 'Visual'
+          'visual': 'Visual',
+          'interactive': 'Interativo',
+          'video': 'Vídeo',
+          'audio': 'Áudio'
         };
         
         // Traduzir cargos para português
         const traducaoCargos = {
           'marketing_manager': 'Gerente de Marketing',
-          'digital_marketing_specialist': 'Especialista em Marketing Digital',
-          'social_media_manager': 'Gerente de Mídias Sociais',
           'content_creator': 'Criador de Conteúdo',
+          'social_media': 'Social Media',
+          'seo_specialist': 'Especialista SEO',
+          'digital_marketing': 'Marketing Digital',
+          'product_manager': 'Gerente de Produto',
           'entrepreneur': 'Empreendedor',
-          'marketing_analyst': 'Analista de Marketing',
-          'seo_specialist': 'Especialista em SEO',
-          'other': 'Outros'
+          'other': 'Outros',
+          'ceo': 'CEO',
+          'cmo': 'CMO',
+          'analyst': 'Analista',
+          'consultant': 'Consultor'
         };
         
-        // Traduzir tamanhos para português
+        // Traduzir tamanhos de empresa para português
         const traducaoTamanhos = {
-          '1-10': '1-10 funcionários',
-          '11-50': '11-50 funcionários',
-          '51-200': '51-200 funcionários',
-          '201-500': '201-500 funcionários',
-          '501-1000': '501-1000 funcionários',
-          '1000+': 'Mais de 1000 funcionários'
+          'small': 'Pequena',
+          'medium': 'Média',
+          'large': 'Grande',
+          'enterprise': 'Empresarial',
+          'startup': 'Startup',
+          'solo': 'Autônomo'
         };
         
         // Traduzir desafios para português
         const traducaoDesafios = {
-          'lead_generation': 'Geração de Leads',
           'content_creation': 'Criação de Conteúdo',
-          'audience_engagement': 'Engajamento de Audiência',
-          'organic_growth': 'Crescimento Orgânico',
-          'roi_measurement': 'Medição de ROI',
-          'customer_acquisition': 'Aquisição de Clientes',
-          'content_strategy': 'Estratégia de Conteúdo',
-          'brand_awareness': 'Reconhecimento de Marca'
+          'audience_growth': 'Crescimento de Audiência',
+          'engagement': 'Engajamento',
+          'roi': 'Retorno sobre Investimento',
+          'competition': 'Concorrência',
+          'resources': 'Recursos',
+          'technology': 'Tecnologia',
+          'time_management': 'Gestão de Tempo',
+          'strategy': 'Estratégia',
+          'measurement': 'Mensuração de Resultados'
+        };
+
+        try {
+          // 1. Gráfico de Interesses Primários
+          if (dados.interessesPrimarios && Object.keys(dados.interessesPrimarios).length > 0) {
+            const ctxInteresses = document.getElementById('chartInteressesPrimarios');
+            if (ctxInteresses) {
+              try {
+                const context = ctxInteresses.getContext('2d');
+                window.chartInteresses = new Chart(context, {
+                  type: 'doughnut',
+                  data: {
+                    labels: Object.keys(dados.interessesPrimarios).map(key => traducaoInteresses[key] || key),
+                    datasets: [{
+                      data: Object.values(dados.interessesPrimarios),
+                      backgroundColor: [
+                        '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#C9CBCF'
+                      ]
+                    }]
+                  },
+                  options: {
+                    responsive: true,
+                    plugins: {
+                      legend: {
+                        position: 'right',
+                      },
+                      title: {
+                        display: true,
+                        text: 'Distribuição de Interesses Primários'
+                      }
+                    }
+                  }
+                });
+              } catch (err) {
+                console.error('Erro ao criar gráfico de interesses:', err);
+                ctxInteresses.parentElement.innerHTML = 
+                  '<div class="text-center text-danger">Erro ao criar gráfico: ' + err.message + '</div>';
+              }
+            }
+          } else {
+            const element = document.getElementById('chartInteressesPrimarios');
+            if (element && element.parentElement) {
+              element.parentElement.innerHTML = 
+                '<div class="text-center text-muted">Sem dados de interesses disponíveis</div>';
+            }
+          }
+          
+          // 2. Gráfico de Frequência de Mensagens
+          if (dados.freqMensagens && Object.keys(dados.freqMensagens).length > 0) {
+            const ctxFreq = document.getElementById('chartFrequenciaMensagens');
+            if (ctxFreq) {
+              try {
+                const context = ctxFreq.getContext('2d');
+                window.chartFreq = new Chart(context, {
+                  type: 'pie',
+                  data: {
+                    labels: Object.keys(dados.freqMensagens).map(key => traducaoFreq[key] || key),
+                    datasets: [{
+                      data: Object.values(dados.freqMensagens),
+                      backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56']
+                    }]
+                  },
+                  options: {
+                    responsive: true,
+                    plugins: {
+                      legend: {
+                        position: 'right',
+                      },
+                      title: {
+                        display: true,
+                        text: 'Preferência de Frequência de Mensagens'
+                      }
+                    }
+                  }
+                });
+              } catch (err) {
+                console.error('Erro ao criar gráfico de frequência:', err);
+                ctxFreq.parentElement.innerHTML = 
+                  '<div class="text-center text-danger">Erro ao criar gráfico: ' + err.message + '</div>';
+              }
+            }
+          } else {
+            const element = document.getElementById('chartFrequenciaMensagens');
+            if (element && element.parentElement) {
+              element.parentElement.innerHTML = 
+                '<div class="text-center text-muted">Sem dados de frequência disponíveis</div>';
+            }
+          }
+          
+          // 3. Gráfico de Tipos de Conteúdo Preferidos
+          if (dados.tiposConteudo && Object.keys(dados.tiposConteudo).length > 0) {
+            const ctxTipos = document.getElementById('chartTiposConteudo');
+            if (ctxTipos) {
+              try {
+                const context = ctxTipos.getContext('2d');
+                window.chartTipos = new Chart(context, {
+                  type: 'bar',
+                  data: {
+                    labels: Object.keys(dados.tiposConteudo).map(key => traducaoTipos[key] || key),
+                    datasets: [{
+                      label: 'Usuários',
+                      data: Object.values(dados.tiposConteudo),
+                      backgroundColor: '#36A2EB',
+                      borderWidth: 1
+                    }]
+                  },
+                  options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    plugins: {
+                      title: {
+                        display: true,
+                        text: 'Tipos de Conteúdo Mais Solicitados'
+                      },
+                      legend: {
+                        display: false
+                      }
+                    }
+                  }
+                });
+              } catch (err) {
+                console.error('Erro ao criar gráfico de tipos de conteúdo:', err);
+                ctxTipos.parentElement.innerHTML = 
+                  '<div class="text-center text-danger">Erro ao criar gráfico: ' + err.message + '</div>';
+              }
+            }
+          } else {
+            const element = document.getElementById('chartTiposConteudo');
+            if (element && element.parentElement) {
+              element.parentElement.innerHTML = 
+                '<div class="text-center text-muted">Sem dados de tipos de conteúdo disponíveis</div>';
+            }
+          }
+          
+          // 4. Gráfico de Formato de Conteúdo Preferido
+          if (dados.formatosConteudo && Object.keys(dados.formatosConteudo).length > 0) {
+            const ctxFormatos = document.getElementById('chartFormatoConteudo');
+            if (ctxFormatos) {
+              try {
+                const context = ctxFormatos.getContext('2d');
+                window.chartFormatos = new Chart(context, {
+                  type: 'pie',
+                  data: {
+                    labels: Object.keys(dados.formatosConteudo).map(key => traducaoFormatos[key] || key),
+                    datasets: [{
+                      data: Object.values(dados.formatosConteudo),
+                      backgroundColor: ['#FFCE56', '#4BC0C0', '#9966FF']
+                    }]
+                  },
+                  options: {
+                    responsive: true,
+                    plugins: {
+                      legend: {
+                        position: 'right',
+                      },
+                      title: {
+                        display: true,
+                        text: 'Formato de Conteúdo Preferido'
+                      }
+                    }
+                  }
+                });
+              } catch (err) {
+                console.error('Erro ao criar gráfico de formatos:', err);
+                ctxFormatos.parentElement.innerHTML = 
+                  '<div class="text-center text-danger">Erro ao criar gráfico: ' + err.message + '</div>';
+              }
+            }
+          } else {
+            const element = document.getElementById('chartFormatoConteudo');
+            if (element && element.parentElement) {
+              element.parentElement.innerHTML = 
+                '<div class="text-center text-muted">Sem dados de formatos disponíveis</div>';
+            }
+          }
+          
+          // 5. Gráfico de Cargos
+          if (dados.cargos && Object.keys(dados.cargos).length > 0) {
+            const ctxCargos = document.getElementById('chartCargos');
+            if (ctxCargos) {
+              try {
+                const context = ctxCargos.getContext('2d');
+                window.chartCargos = new Chart(context, {
+                  type: 'pie',
+                  data: {
+                    labels: Object.keys(dados.cargos).map(key => traducaoCargos[key] || key),
+                    datasets: [{
+                      data: Object.values(dados.cargos),
+                      backgroundColor: [
+                        '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', 
+                        '#9966FF', '#FF9F40', '#C9CBCF', '#1B998B'
+                      ]
+                    }]
+                  },
+                  options: {
+                    responsive: true,
+                    plugins: {
+                      legend: {
+                        position: 'right',
+                      },
+                      title: {
+                        display: true,
+                        text: 'Distribuição de Cargos/Funções'
+                      }
+                    }
+                  }
+                });
+              } catch (err) {
+                console.error('Erro ao criar gráfico de cargos:', err);
+                ctxCargos.parentElement.innerHTML = 
+                  '<div class="text-center text-danger">Erro ao criar gráfico: ' + err.message + '</div>';
+              }
+            }
+          } else {
+            const element = document.getElementById('chartCargos');
+            if (element && element.parentElement) {
+              element.parentElement.innerHTML = 
+                '<div class="text-center text-muted">Sem dados de cargos disponíveis</div>';
+            }
+          }
+          
+          // 6. Gráfico de Tamanho das Empresas
+          if (dados.tamanhoEmpresas && Object.keys(dados.tamanhoEmpresas).length > 0) {
+            const ctxTamanho = document.getElementById('chartTamanhoEmpresa');
+            if (ctxTamanho) {
+              try {
+                const context = ctxTamanho.getContext('2d');
+                window.chartTamanho = new Chart(context, {
+                  type: 'bar',
+                  data: {
+                    labels: Object.keys(dados.tamanhoEmpresas).map(key => traducaoTamanhos[key] || key),
+                    datasets: [{
+                      label: 'Usuários',
+                      data: Object.values(dados.tamanhoEmpresas),
+                      backgroundColor: '#4BC0C0',
+                      borderWidth: 1
+                    }]
+                  },
+                  options: {
+                    responsive: true,
+                    indexAxis: 'y',
+                    plugins: {
+                      title: {
+                        display: true,
+                        text: 'Tamanho das Empresas'
+                      },
+                      legend: {
+                        display: false
+                      }
+                    }
+                  }
+                });
+              } catch (err) {
+                console.error('Erro ao criar gráfico de tamanho de empresas:', err);
+                ctxTamanho.parentElement.innerHTML = 
+                  '<div class="text-center text-danger">Erro ao criar gráfico: ' + err.message + '</div>';
+              }
+            }
+          } else {
+            const element = document.getElementById('chartTamanhoEmpresa');
+            if (element && element.parentElement) {
+              element.parentElement.innerHTML = 
+                '<div class="text-center text-muted">Sem dados de tamanho de empresas disponíveis</div>';
+            }
+          }
+          
+          // 7. Gráfico de Desafios Mais Comuns
+          if (dados.desafios && Object.keys(dados.desafios).length > 0) {
+            const ctxDesafios = document.getElementById('chartDesafios');
+            if (ctxDesafios) {
+              try {
+                const context = ctxDesafios.getContext('2d');
+                window.chartDesafios = new Chart(context, {
+                  type: 'bar',
+                  data: {
+                    labels: Object.keys(dados.desafios).map(key => traducaoDesafios[key] || key),
+                    datasets: [{
+                      label: 'Usuários',
+                      data: Object.values(dados.desafios),
+                      backgroundColor: '#9966FF',
+                      borderWidth: 1
+                    }]
+                  },
+                  options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    plugins: {
+                      title: {
+                        display: true,
+                        text: 'Desafios Mais Comuns Relatados'
+                      },
+                      legend: {
+                        display: false
+                      }
+                    }
+                  }
+                });
+              } catch (err) {
+                console.error('Erro ao criar gráfico de desafios:', err);
+                ctxDesafios.parentElement.innerHTML = 
+                  '<div class="text-center text-danger">Erro ao criar gráfico: ' + err.message + '</div>';
+              }
+            }
+          } else {
+            const element = document.getElementById('chartDesafios');
+            if (element && element.parentElement) {
+              element.parentElement.innerHTML = 
+                '<div class="text-center text-muted">Sem dados de desafios disponíveis</div>';
+            }
+          }
+          
+          // 8. Gráfico de Horários Preferidos
+          if (dados.horariosPref && Array.isArray(dados.horariosPref) && dados.horariosPref.some(valor => valor > 0)) {
+            const ctxHorarios = document.getElementById('chartHorarioPreferido');
+            if (ctxHorarios) {
+              try {
+                const context = ctxHorarios.getContext('2d');
+                
+                // Criar rótulos para as horas
+                const labelsHoras = [];
+                for (let i = 0; i < 24; i++) {
+                  labelsHoras.push(`${i < 10 ? '0' + i : i}:00`);
+                }
+                
+                window.chartHorarios = new Chart(context, {
+                  type: 'bar',
+                  data: {
+                    labels: labelsHoras,
+                    datasets: [{
+                      label: 'Preferência',
+                      data: dados.horariosPref,
+                      backgroundColor: '#FF9F40',
+                      borderWidth: 1
+                    }]
+                  },
+                  options: {
+                    responsive: true,
+                    plugins: {
+                      title: {
+                        display: true,
+                        text: 'Horários Preferidos para Comunicação'
+                      },
+                      legend: {
+                        display: false
+                      }
+                    },
+                    scales: {
+                      y: {
+                        beginAtZero: true,
+                        title: {
+                          display: true,
+                          text: 'Número de Usuários'
+                        }
+                      }
+                    }
+                  }
+                });
+              } catch (err) {
+                console.error('Erro ao criar gráfico de horários preferidos:', err);
+                ctxHorarios.parentElement.innerHTML = 
+                  '<div class="text-center text-danger">Erro ao criar gráfico: ' + err.message + '</div>';
+              }
+            }
+          } else {
+            const element = document.getElementById('chartHorarioPreferido');
+            if (element && element.parentElement) {
+              element.parentElement.innerHTML = 
+                '<div class="text-center text-muted">Sem dados de horários preferidos disponíveis</div>';
+            }
+          }
+        } catch (error) {
+          console.error('Erro ao processar dados dos gráficos:', error);
+          $('#perfisInfo').html(`
+            <div class="alert alert-danger">
+              <i class="fas fa-exclamation-triangle"></i> 
+              Erro ao processar dados dos gráficos: ${error.message}
+            </div>
+          `);
+        }
+      }
+      
+      // Função para mover usuário entre colunas do Kanban
+      function moverUsuarioKanban(userId, colunaOrigem, colunaDestino) {
+        if (!userId || !colunaOrigem || !colunaDestino) {
+          console.error('Parâmetros inválidos para mover usuário');
+          mostrarNotificacao('Erro', 'Parâmetros inválidos para mover usuário', 'danger');
+          return;
+        }
+        
+        // Se estiver tentando mover para a mesma coluna, não faz nada
+        if (colunaOrigem === colunaDestino) {
+          console.log(`Usuário ${userId} já está na coluna ${colunaDestino}`);
+          mostrarNotificacao('Informação', `Usuário já está na coluna ${colunaDestino}`, 'info');
+          return;
+        }
+        
+        // Status correspondente a cada coluna
+        const statusMap = {
+            'novos': 'novo',
+            'onboarding': 'onboarding',
+            'em-progresso': 'ativo',
+            'concluido': 'concluido'
         };
         
-        // Função para destruir gráfico de forma segura
-        function destroyChart(chartInstance) {
-          if (chartInstance && typeof chartInstance.destroy === 'function') {
-            chartInstance.destroy();
-          }
+        // Atualizar visual primeiro para feedback imediato
+        const cardElement = $(`#kanban-${colunaOrigem} .kanban-card[data-id="${userId}"]`);
+        if (cardElement.length === 0) {
+          console.error(`Card do usuário ${userId} não encontrado na coluna ${colunaOrigem}`);
+          mostrarNotificacao('Erro', `Card do usuário não encontrado`, 'danger');
+          return;
         }
         
-        // 1. Gráfico de Interesses Primários
-        const ctxInteresses = document.getElementById('chartInteressesPrimarios').getContext('2d');
-        destroyChart(window.chartInteresses);
-        window.chartInteresses = new Chart(ctxInteresses, {
-          type: 'doughnut',
-          data: {
-            labels: Object.keys(dados.interessesPrimarios).map(key => traducaoInteresses[key] || key),
-            datasets: [{
-              data: Object.values(dados.interessesPrimarios),
-              backgroundColor: [
-                '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#C9CBCF'
-              ]
-            }]
-          },
-          options: {
-            responsive: true,
-            plugins: {
-              legend: {
-                position: 'right',
-              },
-              title: {
-                display: true,
-                text: 'Distribuição de Interesses Primários'
-              }
-            }
-          }
-        });
+        // Indicador de carregamento no card
+        const originalContent = cardElement.html();
+        cardElement.html(`
+          <div class="p-2 text-center">
+            <i class="fas fa-spinner fa-spin"></i> Movendo...
+          </div>
+        `);
         
-        // 2. Gráfico de Frequência de Mensagens
-        const ctxFreq = document.getElementById('chartFrequenciaMensagens').getContext('2d');
-        destroyChart(window.chartFreq);
-        window.chartFreq = new Chart(ctxFreq, {
-          type: 'pie',
-          data: {
-            labels: Object.keys(dados.freqMensagens).map(key => traducaoFreq[key] || key),
-            datasets: [{
-              data: Object.values(dados.freqMensagens),
-              backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56']
-            }]
-          },
-          options: {
-            responsive: true,
-            plugins: {
-              legend: {
-                position: 'right',
-              },
-              title: {
-                display: true,
-                text: 'Preferência de Frequência de Mensagens'
-              }
-            }
-          }
-        });
+        // Mover visualmente primeiro para feedback mais rápido
+        const countOrigem = parseInt($(`#count-${colunaOrigem}`).text()) - 1;
+        const countDestino = parseInt($(`#count-${colunaDestino}`).text()) + 1;
+        $(`#count-${colunaOrigem}`).text(countOrigem >= 0 ? countOrigem : 0);
+        $(`#count-${colunaDestino}`).text(countDestino);
         
-        // 3. Gráfico de Tipos de Conteúdo Preferidos
-        const ctxTipos = document.getElementById('chartTiposConteudo').getContext('2d');
-        destroyChart(window.chartTipos);
-        window.chartTipos = new Chart(ctxTipos, {
-          type: 'bar',
-          data: {
-            labels: Object.keys(dados.tiposConteudo).map(key => traducaoTipos[key] || key),
-            datasets: [{
-              label: 'Usuários',
-              data: Object.values(dados.tiposConteudo),
-              backgroundColor: '#36A2EB',
-              borderWidth: 1
-            }]
-          },
-          options: {
-            indexAxis: 'y',
-            responsive: true,
-            plugins: {
-              title: {
-                display: true,
-                text: 'Tipos de Conteúdo Mais Solicitados'
-              },
-              legend: {
-                display: false
-              }
-            }
-          }
-        });
-        
-        // 4. Gráfico de Formato de Conteúdo Preferido
-        const ctxFormatos = document.getElementById('chartFormatoConteudo').getContext('2d');
-        destroyChart(window.chartFormatos);
-        window.chartFormatos = new Chart(ctxFormatos, {
-          type: 'pie',
-          data: {
-            labels: Object.keys(dados.formatosConteudo).map(key => traducaoFormatos[key] || key),
-            datasets: [{
-              data: Object.values(dados.formatosConteudo),
-              backgroundColor: ['#FFCE56', '#4BC0C0', '#9966FF']
-            }]
-          },
-          options: {
-            responsive: true,
-            plugins: {
-              legend: {
-                position: 'right',
-              },
-              title: {
-                display: true,
-                text: 'Formato de Conteúdo Preferido'
-              }
-            }
-          }
-        });
-        
-        // 5. Gráfico de Cargos
-        const ctxCargos = document.getElementById('chartCargos').getContext('2d');
-        destroyChart(window.chartCargos);
-        window.chartCargos = new Chart(ctxCargos, {
-          type: 'pie',
-          data: {
-            labels: Object.keys(dados.cargos).map(key => traducaoCargos[key] || key),
-            datasets: [{
-              data: Object.values(dados.cargos),
-              backgroundColor: [
-                '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', 
-                '#9966FF', '#FF9F40', '#C9CBCF', '#1B998B'
-              ]
-            }]
-          },
-          options: {
-            responsive: true,
-            plugins: {
-              legend: {
-                position: 'right',
-              },
-              title: {
-                display: true,
-                text: 'Distribuição de Cargos/Funções'
-              }
-            }
-          }
-        });
-        
-        // 6. Gráfico de Tamanho das Empresas
-        const ctxTamanho = document.getElementById('chartTamanhoEmpresa').getContext('2d');
-        destroyChart(window.chartTamanho);
-        window.chartTamanho = new Chart(ctxTamanho, {
-          type: 'bar',
-          data: {
-            labels: Object.keys(dados.tamanhoEmpresas).map(key => traducaoTamanhos[key] || key),
-            datasets: [{
-              label: 'Usuários',
-              data: Object.values(dados.tamanhoEmpresas),
-              backgroundColor: '#4BC0C0',
-              borderWidth: 1
-            }]
-          },
-          options: {
-            responsive: true,
-            indexAxis: 'y',
-            plugins: {
-              title: {
-                display: true,
-                text: 'Tamanho das Empresas'
-              },
-              legend: {
-                display: false
-              }
-            }
-          }
-        });
-        
-        // 7. Gráfico de Desafios Mais Comuns
-        const ctxDesafios = document.getElementById('chartDesafios').getContext('2d');
-        destroyChart(window.chartDesafios);
-        window.chartDesafios = new Chart(ctxDesafios, {
-          type: 'bar',
-          data: {
-            labels: Object.keys(dados.desafios).map(key => traducaoDesafios[key] || key),
-            datasets: [{
-              label: 'Usuários',
-              data: Object.values(dados.desafios),
-              backgroundColor: '#9966FF',
-              borderWidth: 1
-            }]
-          },
-          options: {
-            indexAxis: 'y',
-            responsive: true,
-            plugins: {
-              title: {
-                display: true,
-                text: 'Desafios Mais Comuns Relatados'
-              },
-              legend: {
-                display: false
-              }
-            }
-          }
-        });
-        
-        // 8. Gráfico de Horários Preferidos
-        const ctxHorarios = document.getElementById('chartHorarioPreferido').getContext('2d');
-        destroyChart(window.chartHorarios);
-        
-        // Criar rótulos para as horas
-        const labelsHoras = [];
-        for (let i = 0; i < 24; i++) {
-          labelsHoras.push(`${i < 10 ? '0' + i : i}:00`);
-        }
-        
-        window.chartHorarios = new Chart(ctxHorarios, {
-          type: 'bar',
-          data: {
-            labels: labelsHoras,
-            datasets: [{
-              label: 'Preferência',
-              data: dados.horariosPref,
-              backgroundColor: '#FF9F40',
-              borderWidth: 1
-            }]
-          },
-          options: {
-            responsive: true,
-            plugins: {
-              title: {
-                display: true,
-                text: 'Horários Preferidos para Comunicação'
-              },
-              legend: {
-                display: false
-              }
-            },
-            scales: {
-              y: {
-                beginAtZero: true,
-                title: {
-                  display: true,
-                  text: 'Número de Usuários'
+        // Enviar requisição para atualizar o status do usuário
+        $.ajax({
+          url: `/api/usuarios/${userId}/status`,
+          method: 'POST',
+          contentType: 'application/json',
+          data: JSON.stringify({ 
+            status: statusMap[colunaDestino],
+            previousStatus: statusMap[colunaOrigem]
+          }),
+          success: function(response) {
+            console.log(`Resposta do servidor:`, response);
+            
+            // Verificar se a operação foi bem-sucedida
+            if (response.success) {
+              console.log(`Usuário ${userId} movido com sucesso para ${colunaDestino}`);
+              
+              // Mover o card para a nova coluna
+              cardElement.fadeOut(300, function() {
+                // Restaurar conteúdo original do card
+                cardElement.html(originalContent);
+                
+                // Remover classes específicas da coluna original
+                cardElement.removeClass(function(index, className) {
+                  return (className.match(/(^|\s)kanban-card-\S+/g) || []).join(' ');
+                });
+                
+                // Adicionar a classe específica da coluna de destino
+                let statusClass = '';
+                switch (colunaDestino) {
+                  case 'novos': statusClass = 'kanban-card-novo'; break;
+                  case 'onboarding': statusClass = 'kanban-card-onboarding'; break;
+                  case 'em-progresso': statusClass = 'kanban-card-ativo'; break;
+                  case 'concluido': statusClass = 'kanban-card-inativo'; break;
                 }
+                cardElement.addClass(statusClass);
+                
+                // Anexar à nova coluna
+                cardElement.appendTo(`#kanban-${colunaDestino}`).fadeIn(300);
+                
+                // Reajustar todos os event listeners para o card na nova posição
+                cardElement.find('.ver-usuario').click(function(e) {
+                  e.preventDefault();
+                  mostrarDetalhesUsuario(userId, response.user || {});
+                });
+                
+                cardElement.find('.mover-usuario').click(function(e) {
+                  e.preventDefault();
+                  const destino = $(this).data('coluna');
+                  moverUsuarioKanban(userId, colunaDestino, destino);
+                });
+                
+                // Mostrar mensagem de sucesso
+                mostrarNotificacao('Sucesso!', `Usuário movido para ${colunaDestino}`, 'success');
+              });
+            } else {
+              // A resposta não indica sucesso
+              console.error('Erro retornado pelo servidor:', response);
+              
+              // Restaurar contadores
+              const countOrigemRestaurado = parseInt($(`#count-${colunaOrigem}`).text()) + 1;
+              const countDestinoRestaurado = parseInt($(`#count-${colunaDestino}`).text()) - 1;
+              $(`#count-${colunaOrigem}`).text(countOrigemRestaurado);
+              $(`#count-${colunaDestino}`).text(countDestinoRestaurado >= 0 ? countDestinoRestaurado : 0);
+              
+              // Restaurar conteúdo original do card
+              cardElement.html(originalContent);
+              
+              // Mostrar mensagem de erro
+              const mensagemErro = response.error || 'Erro desconhecido';
+              mostrarNotificacao('Erro!', `Não foi possível mover o usuário: ${mensagemErro}`, 'danger');
+            }
+          },
+          error: function(xhr, status, error) {
+            console.error(`Erro ao mover usuário ${userId}:`, error);
+            console.log('Resposta do servidor:', xhr.responseText);
+            
+            // Restaurar contadores
+            const countOrigemRestaurado = parseInt($(`#count-${colunaOrigem}`).text()) + 1;
+            const countDestinoRestaurado = parseInt($(`#count-${colunaDestino}`).text()) - 1;
+            $(`#count-${colunaOrigem}`).text(countOrigemRestaurado);
+            $(`#count-${colunaDestino}`).text(countDestinoRestaurado >= 0 ? countDestinoRestaurado : 0);
+            
+            // Restaurar conteúdo original do card
+            cardElement.html(originalContent);
+            
+            try {
+              // Tentar analisar a resposta detalhada do servidor
+              const resposta = JSON.parse(xhr.responseText);
+              let mensagemErro = resposta.error || 'Erro desconhecido';
+              
+              // Fornecer mensagens mais amigáveis para erros comuns
+              if (resposta.code === 'ValidationException') {
+                mensagemErro = 'Erro de validação no banco de dados. Tente novamente em alguns instantes.';
+                console.error('Detalhes do erro de validação:', resposta.details || resposta);
+              } else if (resposta.code === 'ResourceNotFoundException') {
+                mensagemErro = 'Usuário não encontrado no banco de dados.';
+              } else if (resposta.code === 'ConditionalCheckFailedException') {
+                mensagemErro = 'Dados do usuário podem ter sido alterados. Recarregue a página.';
               }
+              
+              mostrarNotificacao('Erro!', `Não foi possível mover o usuário: ${mensagemErro}`, 'danger');
+            } catch (e) {
+              // Fallback para mensagem genérica se não conseguir analisar a resposta
+              mostrarNotificacao('Erro!', `Não foi possível mover o usuário. Verifique o console para detalhes. [${status}: ${error}]`, 'danger');
             }
           }
+        });
+      }
+      
+      // Função para mostrar notificações
+      function mostrarNotificacao(titulo, mensagem, tipo = 'info') {
+        const notificacaoId = 'notificacao-' + Date.now();
+        const html = `
+          <div id="${notificacaoId}" class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-delay="5000">
+            <div class="toast-header bg-${tipo} text-white">
+              <strong class="mr-auto">${titulo}</strong>
+              <button type="button" class="ml-2 mb-1 close" data-dismiss="toast" aria-label="Fechar">
+                <span aria-hidden="true">&times;</span>
+              </button>
+            </div>
+            <div class="toast-body">
+              ${mensagem}
+            </div>
+          </div>
+        `;
+        
+        // Verificar se o container de notificações existe, senão criar
+        if ($('#notificacoes-container').length === 0) {
+          $('body').append(`
+            <div id="notificacoes-container" style="position: fixed; top: 20px; right: 20px; z-index: 9999;"></div>
+          `);
+        }
+        
+        // Adicionar notificação ao container
+        $('#notificacoes-container').append(html);
+        
+        // Mostrar a notificação
+        $(`#${notificacaoId}`).toast('show');
+        
+        // Remover a notificação do DOM quando fechada
+        $(`#${notificacaoId}`).on('hidden.bs.toast', function() {
+          $(this).remove();
         });
       }
       
