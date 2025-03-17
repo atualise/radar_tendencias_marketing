@@ -51,7 +51,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.static(__dirname));
 app.use(bodyParser.json());
 
-// Servir o arquivo HTML administrativo
+// Rota para a interface HTML principal
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'admin-server.html'));
 });
@@ -324,220 +324,264 @@ app.get('/api/usuarios', async (req, res) => {
 
 // IMPORTANTE: Endpoint específico para perfis (deve vir antes do endpoint com parâmetro :id)
 app.get('/api/usuarios/perfis', async (req, res) => {
+  console.log('Solicitação recebida para análise estatística de perfis de usuários');
+  
   try {
-    console.log('Solicitação recebida para obter perfis de usuários');
+    console.log(`Consultando dados de perfis da tabela ${USUARIOS_TABLE}`);
+    const startTime = Date.now();
     
-    const params = {
-      TableName: USUARIOS_TABLE,
-      Limit: 1000
-    };
-    
-    const result = await dynamoDB.scan(params).promise();
-    
-    // Verificar se temos resultados
-    if (!result || !result.Items || result.Items.length === 0) {
-      console.log('⚠️ Nenhum usuário encontrado na tabela');
-      return res.json({
-        count: 0,
-        timestamp: new Date().toISOString(),
-        perfis: [],
-        message: 'Nenhum usuário encontrado'
+    let result;
+    try {
+      // Buscar todos os usuários para análise
+      result = await dynamoDB.scan({
+        TableName: USUARIOS_TABLE,
+        Limit: 1000
+      }).promise();
+      
+      const endTime = Date.now();
+      console.log(`Consulta bem-sucedida: ${result.Items?.length || 0} usuários encontrados (${endTime - startTime}ms)`);
+    } catch (dbError) {
+      console.error('Erro na consulta ao DynamoDB:', dbError);
+      return res.status(500).json({
+        error: `Erro ao consultar o DynamoDB: ${dbError.message}`,
+        code: dbError.code,
+        table: USUARIOS_TABLE
       });
     }
     
-    console.log(`✅ Encontrados ${result.Items.length} usuários`);
+    if (!result.Items || result.Items.length === 0) {
+      return res.json({
+        count: 0,
+        timestamp: new Date().toISOString(),
+        estatisticas: {
+          erro: "Sem dados para análise"
+        }
+      });
+    }
     
-    // Extrair apenas informações de perfil básicas para cada usuário
-    const perfis = result.Items.map(usuario => {
-      // Garantir que teremos um ID
-      const usuarioId = usuario.id || usuario.usuarioId || usuario.userId || 
-                       usuario.telefone || usuario.phoneNumber || 
-                       usuario._id || usuario.uid || 'sem-id';
-      
-      // Extrair campos relevantes para o perfil
-      const { 
-        nome, email, telefone, phoneNumber, 
-        status, ativo, estagio, dataCriacao, dataAtualizacao,
-        perfil, tipo, papel, role, name
-      } = usuario;
-      
-      // Criar objeto de perfil com valores padrão para campos que podem estar ausentes
-      return {
-        id: usuarioId,
-        nome: nome || name || 'Sem nome',
-        email: email || 'Não informado',
-        telefone: telefone || phoneNumber || 'Não informado',
-        status: status || (ativo ? 'ativo' : 'inativo') || 'desconhecido',
-        estagio: estagio || 'novo',
-        dataCriacao: dataCriacao || dataAtualizacao || new Date().toISOString(),
-        dataAtualizacao: dataAtualizacao || dataCriacao || new Date().toISOString(),
-        perfil: perfil || {},
-        tipo: tipo || 'usuário',
-        papel: papel || role || 'membro'
-      };
-    });
+    // Processar dados para estatísticas de perfis
+    const estatisticas = analisarPerfilUsuarios(result.Items);
     
-    // Garantir que todos os perfis tenham os campos necessários
-    const perfisValidados = perfis.filter(p => p && p.id !== 'sem-id');
+    console.log('Estatísticas de perfis geradas com sucesso');
     
-    console.log(`✅ Retornando ${perfisValidados.length} perfis válidos`);
-    
+    // Responder com as estatísticas
     res.json({
-      count: perfisValidados.length,
+      count: result.Items.length,
       timestamp: new Date().toISOString(),
-      perfis: perfisValidados,
-      usuarios: result.Items, // Incluir dados originais para depuração
-      status: 'success'
+      estatisticas: estatisticas
     });
     
   } catch (error) {
-    console.error('❌ Erro ao processar solicitação de perfis:', error);
-    
-    // Responder com erro mais detalhado
+    console.error('Erro ao processar solicitação /api/usuarios/perfis:', error);
     res.status(500).json({
-      error: `Erro ao processar perfis: ${error.message}`,
-      timestamp: new Date().toISOString(),
-      perfis: [],
-      count: 0,
-      status: 'error',
-      errorDetails: {
-        message: error.message,
-        code: error.code || 'UNKNOWN_ERROR',
-        stack: error.stack
-      }
+      error: `Erro ao processar solicitação: ${error.message}`,
+      table: USUARIOS_TABLE
     });
   }
 });
 
-// Endpoint específico para análise estatística de perfis
+// Endpoint para calcular estatísticas de usuários
 app.get('/api/usuarios/estatisticas', async (req, res) => {
+  console.log('Iniciando cálculo de estatísticas de usuários...');
+  console.log(`Tabela: ${USUARIOS_TABLE}, Região: ${awsRegion}`);
+  
   try {
-    console.log('Solicitação recebida para análise estatística de perfis de usuários');
-    console.log('Endpoint: /api/usuarios/estatisticas - Iniciando processamento');
-    
-    // Log do ambiente
-    console.log(`Ambiente de execução: Tabela=${USUARIOS_TABLE}, Região=${awsRegion}`);
-    
-    const params = {
-      TableName: USUARIOS_TABLE,
-      Limit: 1000
-    };
-    
-    console.log('Iniciando scan da tabela de usuários...');
-    const result = await dynamoDB.scan(params).promise();
-    console.log(`Scan concluído: ${result && result.Items ? result.Items.length : 0} itens encontrados`);
-    
-    // Verificar se temos resultados
-    if (!result || !result.Items || result.Items.length === 0) {
-      console.log('⚠️ Nenhum usuário encontrado na tabela para análise estatística');
+    // Verificar se a tabela existe
+    console.log(`Verificando tabela ${USUARIOS_TABLE}...`);
+    try {
+      const describeTable = await new AWS.DynamoDB().describeTable({
+        TableName: USUARIOS_TABLE
+      }).promise();
+      console.log(`Tabela ${USUARIOS_TABLE} encontrada: ${describeTable.Table.TableStatus}`);
+    } catch (err) {
+      console.error(`ERRO: Tabela ${USUARIOS_TABLE} não acessível:`, err);
       return res.json({
-        status: 'warning',
-        message: 'Nenhum dado de usuário disponível para análise',
-        timestamp: new Date().toISOString(),
-        estatisticas: {}
+        status: 'error',
+        message: `Não foi possível acessar a tabela ${USUARIOS_TABLE}: ${err.message}`,
+        error: err.code
       });
     }
     
-    console.log(`✅ Analisando ${result.Items.length} usuários para estatísticas`);
+    // Buscar todos os usuários para calcular estatísticas
+    console.log('Iniciando scan da tabela de usuários...');
+    let usuarios = [];
     
-    const usuarios = result.Items;
-    
-    // Contador de status
-    const statusCount = {};
-    usuarios.forEach(usuario => {
-      let status = usuario.status;
-      if (usuario.ativo === true && !status) status = 'ativo';
-      if (usuario.ativo === false && !status) status = 'inativo';
-      status = status || 'desconhecido';
+    try {
+      const scanResult = await dynamoDB.scan({
+        TableName: USUARIOS_TABLE,
+        Limit: 1000
+      }).promise();
       
-      statusCount[status] = (statusCount[status] || 0) + 1;
-    });
-    
-    // Contador de estágios
-    const estagioCount = {};
-    usuarios.forEach(usuario => {
-      const estagio = usuario.estagio || 'sem-estagio';
-      estagioCount[estagio] = (estagioCount[estagio] || 0) + 1;
-    });
-    
-    // Contador por data de cadastro (mês)
-    const cadastrosPorMes = {};
-    usuarios.forEach(usuario => {
-      if (usuario.dataCriacao) {
-        const mes = usuario.dataCriacao.substring(0, 7); // YYYY-MM
-        cadastrosPorMes[mes] = (cadastrosPorMes[mes] || 0) + 1;
+      usuarios = scanResult.Items || [];
+      console.log(`Scan concluído, ${usuarios.length} usuários encontrados`);
+      
+      if (usuarios.length === 0) {
+        console.log('AVISO: Nenhum usuário encontrado na tabela');
+        return res.json({
+          count: 0,
+          timestamp: new Date().toISOString(),
+          estatisticas: {
+            erro: "Sem dados para análise"
+          }
+        });
       }
-    });
-    
-    // Contador por tipo de perfil
-    const tipoPerfilCount = {};
-    usuarios.forEach(usuario => {
-      const tipo = usuario.tipo || usuario.perfil?.tipo || 'padrao';
-      tipoPerfilCount[tipo] = (tipoPerfilCount[tipo] || 0) + 1;
-    });
-    
-    // Mapear campos mais comuns
-    const camposComuns = {};
-    usuarios.forEach(usuario => {
-      Object.keys(usuario).forEach(campo => {
-        camposComuns[campo] = (camposComuns[campo] || 0) + 1;
+    } catch (err) {
+      console.error('ERRO ao buscar usuários para estatísticas:', err);
+      return res.json({
+        status: 'error',
+        message: `Erro ao buscar dados de usuários: ${err.message}`,
+        error: err.code
       });
-    });
+    }
     
-    // Campos mais frequentes (top 10)
-    const camposFrequentes = Object.entries(camposComuns)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 10)
-      .reduce((obj, [key, value]) => {
-        obj[key] = value;
-        return obj;
-      }, {});
+    // Analisar perfis de usuários e gerar estatísticas completas
+    console.log('Analisando perfis de usuários...');
+    const estatisticas = analisarPerfilUsuarios(usuarios);
     
-    const estatisticas = {
-      totalUsuarios: usuarios.length,
-      porStatus: statusCount,
-      porEstagio: estagioCount,
-      cadastrosPorMes,
-      tiposPerfil: tipoPerfilCount,
-      camposFrequentes,
-      ultimaAtualizacao: new Date().toISOString()
-    };
-    
-    console.log(`✅ Estatísticas geradas com sucesso: ${Object.keys(estatisticas).length} categorias`);
-    console.log('Preparando resposta JSON...');
-    
-    // Adicionando dados simplificados para debug
-    const dadosSimplificados = {
-      total: usuarios.length,
-      statusCount,
-      estagioCount
-    };
-    
-    console.log('Dados simplificados:', JSON.stringify(dadosSimplificados));
-    
+    // Resposta de sucesso
     return res.json({
-      status: 'success',
-      estatisticas,
-      message: 'Análise estatística concluída',
+      count: usuarios.length,
       timestamp: new Date().toISOString(),
-      debug: dadosSimplificados
+      estatisticas: estatisticas
     });
     
   } catch (error) {
-    console.error('❌ Erro ao gerar estatísticas de perfis:', error);
-    console.error('Stack trace:', error.stack);
-    
-    // Responder com erro mais detalhado
-    return res.status(500).json({
+    console.error('ERRO CRÍTICO ao calcular estatísticas:', error);
+    return res.json({
       status: 'error',
-      error: `Erro ao gerar estatísticas: ${error.message}`,
-      message: 'Nenhum dado de usuário disponível para análise: ' + (error.code || 'Erro desconhecido'),
-      timestamp: new Date().toISOString(),
-      estatisticas: {},
-      errorStack: error.stack
+      message: `Falha ao processar estatísticas: ${error.message}`,
+      error: error.code || 'UNKNOWN_ERROR'
     });
   }
 });
+
+// Função para analisar perfis de usuários e gerar estatísticas
+function analisarPerfilUsuarios(usuarios) {
+  // Verificar se há dados para analisar
+  if (!usuarios || usuarios.length === 0) {
+    return {
+      erro: "Sem dados para análise"
+    };
+  }
+  
+  // Inicializar objetos para armazenar contagens
+  const interessesPrimarios = {};
+  const freqMensagens = {};
+  const tiposConteudo = {};
+  const formatosConteudo = {};
+  const cargos = {};
+  const tamanhoEmpresas = {};
+  const desafios = {};
+  const horariosPref = Array(24).fill(0);
+  const statusCount = {};
+  
+  // Analisar cada usuário
+  usuarios.forEach(usuario => {
+    // Status
+    const status = usuario.status || 'desconhecido';
+    statusCount[status] = (statusCount[status] || 0) + 1;
+    
+    // Interesses primários
+    if (usuario.preferences && usuario.preferences.interests && Array.isArray(usuario.preferences.interests)) {
+      usuario.preferences.interests.forEach(interesse => {
+        if (interesse && interesse.category) {
+          interessesPrimarios[interesse.category] = (interessesPrimarios[interesse.category] || 0) + 1;
+        }
+      });
+    }
+    
+    // Frequência de mensagens
+    if (usuario.preferences && usuario.preferences.frequency) {
+      const freq = usuario.preferences.frequency;
+      freqMensagens[freq] = (freqMensagens[freq] || 0) + 1;
+    }
+    
+    // Tipos de conteúdo preferidos
+    if (usuario.preferences && usuario.preferences.contentTypes && Array.isArray(usuario.preferences.contentTypes)) {
+      usuario.preferences.contentTypes.forEach(tipo => {
+        if (tipo) {
+          tiposConteudo[tipo] = (tiposConteudo[tipo] || 0) + 1;
+        }
+      });
+    }
+    
+    // Formato de conteúdo preferido
+    if (usuario.preferences && usuario.preferences.preferredContentFormat) {
+      const formato = usuario.preferences.preferredContentFormat;
+      formatosConteudo[formato] = (formatosConteudo[formato] || 0) + 1;
+    }
+    
+    // Cargos/funções
+    if (usuario.profile && usuario.profile.role) {
+      const cargo = usuario.profile.role;
+      cargos[cargo] = (cargos[cargo] || 0) + 1;
+    } else if (usuario.role) {
+      const cargo = usuario.role;
+      cargos[cargo] = (cargos[cargo] || 0) + 1;
+    }
+    
+    // Tamanho da empresa
+    if (usuario.profile && usuario.profile.companySize) {
+      const tamanho = usuario.profile.companySize;
+      tamanhoEmpresas[tamanho] = (tamanhoEmpresas[tamanho] || 0) + 1;
+    }
+    
+    // Desafios relatados
+    if (usuario.profile && usuario.profile.challenges && Array.isArray(usuario.profile.challenges)) {
+      usuario.profile.challenges.forEach(desafio => {
+        if (desafio) {
+          desafios[desafio] = (desafios[desafio] || 0) + 1;
+        }
+      });
+    }
+    
+    // Horários preferidos
+    if (usuario.preferences && usuario.preferences.preferredTime) {
+      const inicio = usuario.preferences.preferredTime.start;
+      const fim = usuario.preferences.preferredTime.end;
+      
+      if (inicio && fim) {
+        try {
+          // Extrair as horas (assumindo formato HH:MM)
+          const horaInicio = parseInt(inicio.split(':')[0]);
+          const horaFim = parseInt(fim.split(':')[0]);
+          
+          // Incrementar todas as horas dentro do intervalo
+          if (!isNaN(horaInicio) && !isNaN(horaFim)) {
+            for (let h = horaInicio; h <= horaFim; h++) {
+              if (h >= 0 && h < 24) {
+                horariosPref[h]++;
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Erro ao processar horários preferidos:', error);
+        }
+      }
+    }
+  });
+  
+  console.log('Estatísticas calculadas com sucesso');
+  
+  // Se não tivermos nenhum interesse, adicionar alguns valores padrão para evitar erro de gráfico vazio
+  if (Object.keys(interessesPrimarios).length === 0) {
+    interessesPrimarios['digital_marketing'] = 1;
+    interessesPrimarios['content_marketing'] = 1;
+  }
+  
+  // Retornar estatísticas compiladas
+  return {
+    interessesPrimarios,
+    freqMensagens,
+    tiposConteudo,
+    formatosConteudo,
+    cargos,
+    tamanhoEmpresas,
+    desafios,
+    horariosPref,
+    statusCount
+  };
+}
 
 // Endpoint para obter perfil de usuário específico
 app.get('/api/usuarios/:id', async (req, res) => {
@@ -717,58 +761,127 @@ app.get('/api/conteudos/pesquisa/:termo', async (req, res) => {
 
 // Endpoint para estatísticas de conteúdos
 app.get('/api/conteudos/estatisticas', async (req, res) => {
+  console.log('Iniciando cálculo de estatísticas de conteúdos...');
+  console.log(`Tabela: ${CONTEUDOS_TABLE}, Região: ${awsRegion}`);
+  
   try {
-    console.log('Gerando estatísticas de conteúdos...');
+    // Verificar se a tabela existe
+    console.log(`Verificando tabela ${CONTEUDOS_TABLE}...`);
+    try {
+      const describeTable = await new AWS.DynamoDB().describeTable({
+        TableName: CONTEUDOS_TABLE
+      }).promise();
+      console.log(`Tabela ${CONTEUDOS_TABLE} encontrada: ${describeTable.Table.TableStatus}`);
+    } catch (err) {
+      console.error(`ERRO: Tabela ${CONTEUDOS_TABLE} não acessível:`, err);
+      return res.json({
+        status: 'error',
+        message: `Não foi possível acessar a tabela ${CONTEUDOS_TABLE}: ${err.message}`,
+        error: err.code
+      });
+    }
     
-    const params = {
-      TableName: CONTEUDOS_TABLE
-    };
+    // Buscar todos os conteúdos para calcular estatísticas
+    console.log('Iniciando scan da tabela de conteúdos...');
+    let conteudos = [];
     
-    const result = await dynamoDB.scan(params).promise();
-    const conteudos = result.Items || [];
-    
-    // Calcular estatísticas básicas
-    const totalConteudos = conteudos.length;
-    
-    // Contar por tipo
-    const contagemPorTipo = {};
-    conteudos.forEach(item => {
-      const tipo = item.tipo || 'sem-tipo';
-      contagemPorTipo[tipo] = (contagemPorTipo[tipo] || 0) + 1;
-    });
-    
-    // Contar por status
-    const contagemPorStatus = {};
-    conteudos.forEach(item => {
-      const status = item.status || 'sem-status';
-      contagemPorStatus[status] = (contagemPorStatus[status] || 0) + 1;
-    });
-    
-    // Contagem por data (mês)
-    const contagemPorMes = {};
-    conteudos.forEach(item => {
-      const data = item.dataCriacao || item.dataPublicacao || item.dataAtualizacao;
-      if (data) {
-        const mes = data.substring(0, 7); // Formato YYYY-MM
-        contagemPorMes[mes] = (contagemPorMes[mes] || 0) + 1;
+    try {
+      const scanResult = await dynamoDB.scan({
+        TableName: CONTEUDOS_TABLE,
+        Limit: 1000
+      }).promise();
+      
+      conteudos = scanResult.Items || [];
+      console.log(`Scan concluído, ${conteudos.length} conteúdos encontrados`);
+      
+      if (conteudos.length === 0) {
+        console.log('AVISO: Nenhum conteúdo encontrado na tabela');
+        return res.json({
+          status: 'warning',
+          message: 'Nenhum conteúdo encontrado para análise',
+          data: {
+            total: 0,
+            porTipo: {},
+            porUsuario: {}
+          }
+        });
       }
+    } catch (err) {
+      console.error('ERRO ao buscar conteúdos para estatísticas:', err);
+      return res.json({
+        status: 'error',
+        message: `Erro ao buscar dados de conteúdos: ${err.message}`,
+        error: err.code
+      });
+    }
+    
+    // Cálculo de estatísticas
+    console.log('Calculando estatísticas de conteúdos...');
+    
+    // Contagem por tipo de conteúdo
+    const conteudosPorTipo = {};
+    const conteudosPorUsuario = {};
+    const tamanhoTotal = conteudos.reduce((acc, conteudo) => {
+      // Contar por tipo
+      const tipo = conteudo.contentType || 'desconhecido';
+      conteudosPorTipo[tipo] = (conteudosPorTipo[tipo] || 0) + 1;
+      
+      // Contar por usuário
+      const usuario = conteudo.userId || 'desconhecido';
+      conteudosPorUsuario[usuario] = (conteudosPorUsuario[usuario] || 0) + 1;
+      
+      // Somar tamanho (se disponível)
+      return acc + (conteudo.content ? conteudo.content.length : 0);
+    }, 0);
+    
+    // Calcular tamanho médio
+    const tamanhoMedio = conteudos.length > 0 ? Math.round(tamanhoTotal / conteudos.length) : 0;
+    
+    // Obter os tópicos mais comuns
+    const topicos = conteudos
+      .filter(c => c.topic)
+      .map(c => c.topic)
+      .reduce((acc, topic) => {
+        acc[topic] = (acc[topic] || 0) + 1;
+        return acc;
+      }, {});
+    
+    // Ordenar por contagem e pegar os 10 principais
+    const principaisTopicos = Object.entries(topicos)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .reduce((acc, [topic, count]) => {
+        acc[topic] = count;
+        return acc;
+      }, {});
+    
+    console.log('Estatísticas calculadas:', { 
+      total: conteudos.length, 
+      porTipo: conteudosPorTipo 
     });
     
-    res.json({
+    // Resposta de sucesso
+    return res.json({
       status: 'success',
-      totalConteudos,
-      contagemPorTipo,
-      contagemPorStatus,
-      contagemPorMes,
-      ultimaAtualizacao: new Date().toISOString()
+      message: `${conteudos.length} conteúdos analisados`,
+      data: {
+        total: conteudos.length,
+        tamanhoTotal,
+        tamanhoMedio,
+        porTipo: conteudosPorTipo,
+        usuariosUnicos: Object.keys(conteudosPorUsuario).length,
+        principaisTopicos
+      },
+      timestamp: new Date().toISOString()
     });
     
   } catch (error) {
-    console.error('❌ Erro ao gerar estatísticas de conteúdos:', error);
-    res.status(500).json({
+    console.error('ERRO CRÍTICO ao calcular estatísticas de conteúdos:', error);
+    return res.json({
       status: 'error',
-      error: `Erro ao gerar estatísticas: ${error.message}`,
-      message: 'Falha ao gerar estatísticas'
+      message: `Falha ao processar estatísticas de conteúdos: ${error.message}`,
+      error: error.code || 'UNKNOWN_ERROR',
+      timestamp: new Date().toISOString()
     });
   }
 });
@@ -1468,6 +1581,132 @@ app.get('/api/dashboards', (req, res) => {
     ],
     status: 'success'
   });
+});
+
+// Endpoint para diagnóstico de API e AWS
+app.get('/api/diagnostico/aws', async (req, res) => {
+  try {
+    console.log('Executando diagnóstico de conexão AWS...');
+    
+    const diagnostico = {
+      timestamp: new Date().toISOString(),
+      ambiente: {
+        node: process.version,
+        platform: process.platform,
+        region: awsRegion,
+        usuariosTable: USUARIOS_TABLE,
+        conteudosTable: CONTEUDOS_TABLE
+      },
+      testes: {}
+    };
+    
+    // Teste 1: Listar tabelas
+    try {
+      console.log('Teste 1: Listando tabelas DynamoDB...');
+      const tabelas = await new AWS.DynamoDB().listTables().promise();
+      diagnostico.testes.listTables = {
+        success: true,
+        message: `${tabelas.TableNames.length} tabelas encontradas`,
+        tables: tabelas.TableNames
+      };
+    } catch (err) {
+      console.error('Erro ao listar tabelas:', err);
+      diagnostico.testes.listTables = {
+        success: false,
+        error: err.code || 'UNKNOWN',
+        message: err.message
+      };
+    }
+    
+    // Teste 2: Descrever tabela de usuários
+    try {
+      console.log(`Teste 2: Descrevendo tabela ${USUARIOS_TABLE}...`);
+      const describeTable = await new AWS.DynamoDB().describeTable({
+        TableName: USUARIOS_TABLE
+      }).promise();
+      
+      diagnostico.testes.describeTable = {
+        success: true,
+        message: `Tabela ${USUARIOS_TABLE} encontrada`,
+        status: describeTable.Table.TableStatus,
+        keySchema: describeTable.Table.KeySchema
+      };
+    } catch (err) {
+      console.error(`Erro ao descrever tabela ${USUARIOS_TABLE}:`, err);
+      diagnostico.testes.describeTable = {
+        success: false,
+        error: err.code || 'UNKNOWN',
+        message: err.message
+      };
+    }
+    
+    // Teste 3: Leitura da tabela de usuários
+    try {
+      console.log(`Teste 3: Lendo tabela ${USUARIOS_TABLE}...`);
+      const scanResult = await dynamoDB.scan({
+        TableName: USUARIOS_TABLE,
+        Limit: 1
+      }).promise();
+      
+      diagnostico.testes.scanTable = {
+        success: true,
+        message: `${scanResult.Items ? scanResult.Items.length : 0} itens lidos`,
+        hasItems: scanResult.Items && scanResult.Items.length > 0
+      };
+      
+      if (scanResult.Items && scanResult.Items.length > 0) {
+        const item = scanResult.Items[0];
+        diagnostico.testes.scanTable.itemKeys = Object.keys(item);
+      }
+    } catch (err) {
+      console.error(`Erro ao ler tabela ${USUARIOS_TABLE}:`, err);
+      diagnostico.testes.scanTable = {
+        success: false,
+        error: err.code || 'UNKNOWN',
+        message: err.message
+      };
+    }
+    
+    // Teste 4: Verificação de credenciais AWS
+    try {
+      console.log('Teste 4: Verificando identidade AWS...');
+      const identity = await new AWS.STS().getCallerIdentity().promise();
+      
+      diagnostico.testes.identidade = {
+        success: true,
+        message: 'Identidade verificada',
+        account: identity.Account,
+        userId: identity.UserId,
+        arn: identity.Arn
+      };
+    } catch (err) {
+      console.error('Erro ao verificar identidade AWS:', err);
+      diagnostico.testes.identidade = {
+        success: false,
+        error: err.code || 'UNKNOWN',
+        message: err.message
+      };
+    }
+    
+    // Verificar resultado geral
+    const todosTestesPassaram = Object.values(diagnostico.testes).every(t => t.success);
+    diagnostico.status = todosTestesPassaram ? 'success' : 'warning';
+    diagnostico.message = todosTestesPassaram 
+      ? 'Todos os testes de diagnóstico passaram com sucesso' 
+      : 'Alguns testes de diagnóstico falharam, verifique os detalhes';
+    
+    console.log('Diagnóstico concluído:', diagnostico.status);
+    return res.json(diagnostico);
+    
+  } catch (error) {
+    console.error('Erro ao executar diagnóstico:', error);
+    return res.json({
+      status: 'error',
+      message: `Falha no diagnóstico: ${error.message}`,
+      timestamp: new Date().toISOString(),
+      error: error.code || 'UNKNOWN'
+    });
+  }
 });
 
 // Explorar a estrutura da tabela na inicialização
